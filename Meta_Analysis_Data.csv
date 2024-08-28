@@ -1,0 +1,163 @@
+Author (Year),Type,Duration,Sample charecteristics,Control vs. Treatment,Sample_size,n_control,n_treatment,Metric,Unit,Data,Variability,Control_Baseline_Mean,Control_Baseline_Variability,Control_Post-intervention_Mean,Control_Post-intervention_Variability,Treatment_Baseline_Mean,Treatment_Baseline_Variability,Treatment_Post-intervention_Mean,Treatment_Post-intervention_Variability,Comment,Funded
+Ziegler (2015),RCT,8 weeks,"18-69 years old, adults, T2D/obese","High fiber, coffee vs. low fiber, red meat, and coffee-free",26,13,13,BMI Values,kg/m2,Mean±SEM,SEM,35.4,1.1,34.1,0.9,33.5,1,32.2,1,NA,
+Ziegler (2015),RCT,8 weeks,"18-69 years old, adults, T2D/obese","High fiber, coffee vs. low fiber, red meat, and coffee-free",26,13,13,Weight Values,Kg,Mean±SEM,SEM,107,5,103,4.5,100,3.7,96,3.3,NA,
+Ziegler (2015),RCT,8 weeks,"18-69 years old, adults, T2D/obese","High fiber, coffee vs. low fiber, red meat, and coffee-free",26,13,13,Total-cholesterol,mmol/L,Mean±SEM,SEM,5.13,0.21,4.79,0.21,5.4,0.23,5.19,0.2,NA,
+Ziegler (2015),RCT,8 weeks,"18-69 years old, adults, T2D/obese","High fiber, coffee vs. low fiber, red meat, and coffee-free",26,13,13,LDL-Cholesterol,mmol/L,Mean±SEM,SEM,3.23,0.2,3.03,0.18,3.39,0.24,3.4,0.17,NA,
+Ziegler (2015),RCT,8 weeks,"18-69 years old, adults, T2D/obese","High fiber, coffee vs. low fiber, red meat, and coffee-free",26,13,13,HDL-Cholesterol,mmol/L,Mean±SEM,SEM,1.34,0.1,1.25,0.07,1.21,0.08,1.18,0.08,NA,
+Ziegler (2015),RCT,8 weeks,"18-69 years old, adults, T2D/obese","High fiber, coffee vs. low fiber, red meat, and coffee-free",26,13,13,Triglyceride,mmol/L,Median IQR,IQR,1.52,0.32,1.1,0.79,1.58,2.16,1.61,1.06,NA,
+Yamashita (1998),RCT,16 weeks,"30-61 years old, women, Overweight/obese",Soy protein vs. beef,36,17,19,BMI Values,kg/m2,Mean±SD,SD,31.1,4.5,28.1,3.9,33.7,5.2,30.8,4.7,"Weight loss diet, also had  8 weeks time point",Meat
+Yamashita (1998),RCT,16 weeks,"30-61 years old, women, Overweight/obese",Soy protein vs. beef,36,17,19,Weight Values,Kg,Mean±SD,SD,80.2,10.3,72.6,9.2,89.9,14.4,82.1,13.5,"Weight loss diet, also had  8 weeks time point",Meat
+Yamashita (1998),RCT,16 weeks,"30-61 years old, women, Overweight/obese",Soy protein vs. beef,36,17,19,Total-cholesterol,mmol/L,Mean±SD,SD,4.52,0.87,4.13,0.58,5.27,1.02,4.5,0.94,"Weight loss diet, also had  8 weeks time point",Meat
+Yamashita (1998),RCT,16 weeks,"30-61 years old, women, Overweight/obese",Soy protein vs. beef,36,17,19,LDL-Cholesterol,mmol/L,Mean±SD,SD,2.78,0.8,2.5,0.61,3.5,0.88,2.94,0.85,"Weight loss diet, also had  8 weeks time point",Meat
+Yamashita (1998),RCT,16 weeks,"30-61 years old, women, Overweight/obese",Soy protein vs. beef,36,17,19,HDL-Cholesterol,mmol/L,Mean±SD,SD,1.18,0.29,1.17,0.25,1.11,0.22,1.06,0.25,"Weight loss diet, also had  8 weeks time point",Meat
+Yamashita (1998),RCT,16 weeks,"30-61 years old, women, Overweight/obese",Soy protein vs. beef,36,17,19,Triglyceride,mmol/L,Mean±SD,SD,1.21,0.56,0.99,0.39,1.44,0.71,1.22,0.34,"Weight loss diet, also had  8 weeks time point",Meat
+Wolmaran (1991),Cross-Over,6 weeks,"22-45 years old, adults",Fish vs. beef,28,28,28,LDL-Cholesterol,mmol/L,Mean±SD,SD,3.23,0.89,3.06,0.76,3.24,0.94,3.36,0.85,Also had 6 weeks post-experimental data,
+Wolmaran (1991),Cross-Over,6 weeks,"22-45 years old, adults",Fish vs. beef,28,28,28,HDL-Cholesterol,mmol/L,Mean±SD,SD,1.68,0.32,1.77,0.36,1.72,0.33,1.71,0.37,Also had 6 weeks post-experimental data,
+Wiebe (1984),Cross-Over,3 weeks,"18-27 years old, men",Plant protein vs. beef,8,8,8,LDL-Cholesterol,mg/dl,Mean±SEM,SEM,96,12,82,6,96,12,82,11,No washout period,
+Wiebe (1984),Cross-Over,3 weeks,"18-27 years old, men",Plant protein vs. beef,8,8,8,HDL-Cholesterol,mg/dl,Mean±SEM,SEM,53,4,42,2,53,4,48,3,No washout period,
+Smith (2001),Cross-Over,6 weeks,"34-58 years old, men",Low beef vs. high beef,10,10,10,Total-cholesterol,mg/dl,Mean,NA,241.1,NA,252.9,NA,229,NA,232.7,NA,4 weeks washout period,Meat
+Smith (2001),Cross-Over,6 weeks,"34-58 years old, men",Low beef vs. high beef,10,10,10,LDL-Cholesterol,mg/dl,Mean,NA,172.5,NA,179.5,NA,148.8,NA,144.4,NA,4 weeks washout period,Meat
+Smith (2001),Cross-Over,6 weeks,"34-58 years old, men",Low beef vs. high beef,10,10,10,HDL-Cholesterol,mg/dl,Mean,NA,41.7,NA,44.1,NA,41.7,NA,40.2,NA,4 weeks washout period,Meat
+Smith (2001),Cross-Over,6 weeks,"34-58 years old, men",Low beef vs. high beef,10,10,10,Triglyceride,mg/dl,Mean,NA,134.1,NA,146.5,NA,192.5,NA,240.3,NA,4 weeks washout period,Meat
+Roussell (2012),Cross-Over,5 weeks,"30-65 years old, men and women",HAD vs. BOLD +,36,36,36,Total-cholesterol,mmol/L,Mean±SEM,SEM,5.46,0.12,5.25,0.09,5.46,0.12,4.96,0.09,"Not all completed each diet n=33,34 ",Meat
+Roussell (2012),Cross-Over,5 weeks,"30-65 years old, men and women",HAD vs. BOLD +,36,36,36,LDL-Cholesterol,mmol/L,Mean±SEM,SEM,3.6,0.1,3.44,0.08,3.6,0.1,3.23,0.07,"Not all completed each diet n=33,34 ",Meat
+Roussell (2012),Cross-Over,5 weeks,"30-65 years old, men and women",HAD vs. BOLD +,36,36,36,HDL-Cholesterol,mmol/L,Mean±SEM,SEM,1.34,0.06,1.32,0.05,1.34,0.06,1.24,0.04,"Not all completed each diet n=33,34 ",Meat
+Roussell (2012),Cross-Over,5 weeks,"30-65 years old, men and women",HAD vs. BOLD +,36,36,36,Triglyceride,mmol/L,Mean±SEM,SEM,1.12,0.05,1.06,0.06,1.12,0.05,1,0.05,"Not all completed each diet n=33,34 ",Meat
+Roussell (2012),Cross-Over,5 weeks,"30-65 years old, men and women",HAD vs. BOLD,36,36,36,Total-cholesterol,mmol/L,Mean±SEM,SEM,5.46,0.12,5.25,0.09,5.46,0.12,4.99,0.09,"Not all completed each diet n=33,34 ",Meat
+Roussell (2012),Cross-Over,5 weeks,"30-65 years old, men and women",HAD vs. BOLD,36,36,36,LDL-Cholesterol,mmol/L,Mean±SEM,SEM,3.6,0.1,3.44,0.08,3.6,0.1,3.23,0.07,"Not all completed each diet n=33,34 ",Meat
+Roussell (2012),Cross-Over,5 weeks,"30-65 years old, men and women",HAD vs. BOLD,36,36,36,HDL-Cholesterol,mmol/L,Mean±SEM,SEM,1.34,0.06,1.32,0.05,1.34,0.06,1.24,0.04,"Not all completed each diet n=33,34 ",Meat
+Roussell (2012),Cross-Over,5 weeks,"30-65 years old, men and women",HAD vs. BOLD,36,36,36,Triglyceride,mmol/L,Mean±SEM,SEM,1.12,0.05,1.06,0.06,1.12,0.05,1.05,0.07,"Not all completed each diet n=33,34 ",Meat
+Roussell (2012),Cross-Over,5 weeks,"30-65 years old, men and women",DASH (hypertension diet) vs BOLD +,36,36,36,Total-cholesterol,mmol/L,Mean±SEM,SEM,5.46,0.12,4.98,0.09,5.46,0.12,4.96,0.09,"Not all completed each diet n=35,34",Meat
+Roussell (2012),Cross-Over,5 weeks,"30-65 years old, men and women",DASH (hypertension diet) vs BOLD +,36,36,36,LDL-Cholesterol,mmol/L,Mean±SEM,SEM,3.6,0.1,3.22,0.07,3.6,0.1,3.23,0.07,"Not all completed each diet n=35,34",Meat
+Roussell (2012),Cross-Over,5 weeks,"30-65 years old, men and women",DASH (hypertension diet) vs BOLD +,36,36,36,HDL-Cholesterol,mmol/L,Mean±SEM,SEM,1.34,0.06,1.22,0.04,1.34,0.06,1.24,0.04,"Not all completed each diet n=35,34",Meat
+Roussell (2012),Cross-Over,5 weeks,"30-65 years old, men and women",DASH (hypertension diet) vs BOLD +,36,36,36,Triglyceride,mmol/L,Mean±SEM,SEM,1.12,0.05,1.08,0.06,1.12,0.05,1,0.05,"Not all completed each diet n=35,34",Meat
+Roussell (2012),Cross-Over,5 weeks,"30-65 years old, men and women",DASH (hypertension diet) vs BOLD,36,36,36,Total-cholesterol,mmol/L,Mean±SEM,SEM,5.46,0.12,4.98,0.09,5.46,0.12,4.99,0.09,"Not all completed each diet n=35,34",Meat
+Roussell (2012),Cross-Over,5 weeks,"30-65 years old, men and women",DASH (hypertension diet) vs BOLD,36,36,36,LDL-Cholesterol,mmol/L,Mean±SEM,SEM,3.6,0.1,3.22,0.07,3.6,0.1,3.23,0.07,"Not all completed each diet n=35,34",Meat
+Roussell (2012),Cross-Over,5 weeks,"30-65 years old, men and women",DASH (hypertension diet) vs BOLD,36,36,36,HDL-Cholesterol,mmol/L,Mean±SEM,SEM,1.34,0.06,1.22,0.04,1.34,0.06,1.24,0.04,"Not all completed each diet n=35,34",Meat
+Roussell (2012),Cross-Over,5 weeks,"30-65 years old, men and women",DASH (hypertension diet) vs BOLD,36,36,36,Triglyceride,mmol/L,Mean±SEM,SEM,1.12,0.05,1.08,0.06,1.12,0.05,1.05,0.07,"Not all completed each diet n=35,34",Meat
+Reyna (2008),No-Control,8 weeks,">30 years old, adults",Low beef vs. high beef,51,0,51,Total-cholesterol,mg/dl,Mean±SD,SD,NA,NA,NA,NA,191.6,8.4,188.9,7.5,No control group,Meat
+Reyna (2008),No-Control,8 weeks,">30 years old, adults",Low beef vs. high beef,51,0,51,Triglyceride,mg/dl,Mean±SD,SD,NA,NA,NA,NA,175.6,11.2,173.1,11.2,No control group,Meat
+Perry (2020),No-Control,12 weeks,">65 years old, men and women",Lean meat (Beef and pork),36,0,36,BMI Values,kg/m2,Mean±SD,SD,NA,NA,NA,NA,32,6.9,30.1,6.4,No control group,Meat
+Perry (2020),No-Control,12 weeks,">65 years old, men and women",Lean meat (beef and pork),36,0,36,Weight Values,Kg,Mean±SD,SD,NA,NA,NA,NA,91.2,18,85.5,16.3,No control group,Meat
+Perry (2020),No-Control,12 weeks,">65 years old, men and women",Lean meat (Beef and pork),36,0,36,% Body Fat Values,,Mean±SD,SD,NA,NA,NA,NA,37.2,9.8,34.7,10.3,No control group,Meat
+Olson (2016),RCT,12 weeks,"18-65 years old, adults",DASH vs. beef,33,15,18,BMI Values,kg/m2,Mean±SD,SD,36.7,6.3,35.5,6.1,34.5,6.5,32.7,6.5,NA,
+Olson (2016),RCT,12 weeks,"18-65 years old, adults",DASH vs. beef,33,15,18,Weight Values,kg,Mean±SD,SD,107.2,23,103.4,21.6,97.6,19.6,92.6,19.4,NA,
+Olson (2016),RCT,12 weeks,"18-65 years old, adults",DASH vs. beef,33,15,18,Total-cholesterol,mg/dl,Mean±SD,SD,196.3,33.9,190,46.5,195.2,36.2,190.4,41.1,NA,
+Olson (2016),RCT,12 weeks,"18-65 years old, adults",DASH vs. beef,33,15,18,LDL-Cholesterol,mg/dl,Mean±SD,SD,122.5,25.9,120.6,37.2,117.8,30.1,117.8,30.1,NA,
+Olson (2016),RCT,12 weeks,"18-65 years old, adults",DASH vs. beef,33,15,18,HDL-Cholesterol,mg/dl,Mean±SD,SD,33.6,9.7,39.5,11,43.5,12.6,45.5,10.9,NA,
+Olson (2016),RCT,12 weeks,"18-65 years old, adults",DASH vs. beef,33,15,18,Triglyceride,mg/dl,Mean±SD,SD,199.8,88.1,193.4,95.9,207.2,87.5,148.4,53.1,NA,
+Murphy (2014),Cross-Over,12 weeks,"Middle aged, men and women",Chicken vs. Pork,49,49,49,BMI Values,kg/m2,Mean±SEM,SEM,30.5,3.6,30.1,0.5,30.5,3.6,30.1,0.5,No washout period,Meat
+Murphy (2014),Cross-Over,12 weeks,"Middle aged, men and women",Chicken vs. pork,49,49,49,Weight Values,kg,Mean±SEM,SEM,90,14,89,2,90,14,89,2,No washout period,Meat
+Murphy (2014),Cross-Over,12 weeks,"Middle aged, men and women",Chicken vs. Pork,49,49,49,% Body Fat Values,,Mean±SEM,SEM,49.4,6.3,49,0.9,49.4,6.3,49,0.9,No washout period,Meat
+Murphy (2014),Cross-Over,12 weeks,"Middle aged, men and women",Chicken vs. Beef,49,49,49,BMI Values,kg/m2,Mean±SEM,SEM,30.5,3.6,30.1,0.5,30.5,3.6,30.1,0.5,No washout period,Meat
+Murphy (2014),Cross-Over,12 weeks,"Middle aged, men and women",Chicken vs. Beef,49,49,49,Weight Values,kg,Mean±SEM,SEM,90,14,89,2,90,14,89,2,No washout period,Meat
+Murphy (2014),Cross-Over,12 weeks,"Middle aged, men and women",Chicken vs. Beef,49,49,49,% Body Fat Values,,Mean±SEM,SEM,49.4,6.3,49,0.9,49.4,6.3,48.9,0.9,No washout period,Meat
+Murphy (2014),Cross-Over,12 weeks,"Middle aged, men and women",Pork vs. Beef,49,49,49,BMI Values,kg/m2,Mean±SEM,SEM,30.5,3.6,30.1,0.5,30.5,3.6,30.1,0.5,Included for completeness. Pork treated as treatment in above which may cause issue.,Meat
+Murphy (2014),Cross-Over,12 weeks,"Middle aged, men and women",Pork vs. Beef,49,49,49,Weight Values,kg,Mean±SEM,SEM,90,14,89,2,90,14,89,2,Included for completeness. Pork treated as treatment in above which may cause issue.,Meat
+Murphy (2014),Cross-Over,12 weeks,"Middle aged, men and women",Pork vs. Beef,49,49,49,% Body Fat Values,,Mean±SEM,SEM,49.4,6.3,49,0.9,49.4,6.3,48.9,0.9,Included for completeness. Pork treated as treatment in above which may cause issue.,Meat
+Murphy (2012),RCT,24 weeks,"18-25 years old, men and women",Habitual diet vs. pork,144,72,72,Weight Values,kg,Mean±SEM,SEM,92.8,2,93.2,2,91.4,2.1,90.6,2.1,NA,Meat
+Murphy (2012),RCT,24 weeks,"18-25 years old, men and women",Habitual diet vs. pork,143,71,72,% Body Fat Values,,Mean±SEM,SEM,40.9,1,41.1,1,42.5,1.1,42.1,1.1,NA,Meat
+Murphy (2012),RCT,24 weeks,"18-25 years old, men and women",Habitual diet vs. pork,143,71,72,Total-cholesterol,mmol/L,Mean±SEM,SEM,5.8,0.1,5.6,0.1,5.6,0.1,5.5,0.1,NA,Meat
+Murphy (2012),RCT,24 weeks,"18-25 years old, men and women",Habitual diet vs. pork,140,69,71,LDL-Cholesterol,mmol/L,Mean±SEM,SEM,3.7,0.1,3.6,0.1,3.7,0.1,3.6,0.1,NA,Meat
+Murphy (2012),RCT,24 weeks,"18-25 years old, men and women",Habitual diet vs. pork,143,71,72,HDL-Cholesterol,mmol/L,Mean±SEM,SEM,1.4,0.03,1.3,0.03,1.3,0.04,1.3,0.03,NA,Meat
+Murphy (2012),RCT,24 weeks,"18-25 years old, men and women",Habitual diet vs. pork,140,69,71,Triglyceride,mmol/L,Mean±SEM,SEM,1.4,0.1,1.3,0.1,1.5,0.1,1.3,0.1,NA,Meat
+Murphy (2012),RCT,24 weeks,"18-25 years old, men and women",Habitual diet vs. pork,144,72,72,BMI Values,kg/m2,Mean±SEM,SEM,31.9,0.5,32.1,0.5,31.8,0.6,31.5,0.7,NA,Meat
+Melanson (2003),RCT,12 weeks,"21-59 years old, women",Chicken vs. beef,61,35,26,Weight Values,kg,Mean±SD,SD,88.4,7,82.4,7.3,86.1,8.7,80.5,8.5,Calorie restriction,Meat
+Melanson (2003),RCT,12 weeks,"21-59 years old, women",Chicken vs. beef,61,35,26,% Body Fat Values,,Mean±SD,SD,33.2,3.2,29.1,3.3,31.3,3,27.8,2.8,Calorie restriction,Meat
+Melanson (2003),RCT,12 weeks,"21-59 years old, women",Chicken vs. beef,61,35,26,Total-cholesterol,mg/dl,Mean±SD,SD,209.7,32.5,190.5,32.6,223.7,48.2,202.3,27.2,Calorie restriction,Meat
+Melanson (2003),RCT,12 weeks,"21-59 years old, women",Chicken vs. beef,61,35,26,LDL-Cholesterol,mg/dl,Mean±SD,SD,127.9,26.8,113.5,26.4,128.7,20.6,119,25.2,Calorie restriction,Meat
+Melanson (2003),RCT,12 weeks,"21-59 years old, women",Chicken vs. beef,61,35,26,HDL-Cholesterol,mg/dl,Mean±SD,SD,52.2,11.8,50.4,11.9,55.8,11.6,56.2,13.1,Calorie restriction,Meat
+Melanson (2003),RCT,12 weeks,"21-59 years old, women",Chicken vs. beef,61,35,26,Triglyceride,mg/dl,Mean±SD,SD,157.7,89,140.7,94.1,156.8,94.6,130.6,102.5,Calorie restriction,Meat
+McArthur (2012),RCT,12 weeks,"18-35 years old, women",Regular diet vs. Pork meat,43,22,21,BMI Values,,Mean±SD,SD,21.8,2.2,21.8,2.1,22.5,3.8,22.7,3.7,NA,Meat
+McArthur (2012),RCT,12 weeks,"18-35 years old, women",Regular diet vs. pork meat,43,22,21,Weight Values,,Mean±SD,SD,61.5,9.2,61.3,8.9,61.6,11.8,62.1,11.4,NA,Meat
+McArthur (2012),RCT,12 weeks,"18-35 years old, women",Regular diet with iron vs. Pork meat,43,22,21,BMI Values,,Mean±SD,SD,21,1.9,21,2,22.5,3.8,22.7,3.7,NA,Meat
+McArthur (2012),RCT,12 weeks,"18-35 years old, women",Regular diet with iron vs. Pork meat,43,22,21,Weight Values,,Mean±SD,SD,55.3,5.8,55.1,5.9,61.6,11.8,62.1,11.4,NA,Meat
+Mateo-Gallego (2011),Cross-Over,4 weeks,">18 years old, woman nuns, overweight/obese",Chicken vs Lamb,34,34,34,Total-cholesterol,mg/l,Mean±SD,SD,1940,60.7,1950,60.8,1940,60.7,1950,71.1,No washout period,
+Mateo-Gallego (2011),Cross-Over,4 weeks,">18 years old, woman nuns, overweight/obese",Chicken vs Lamb,34,34,34,TG,mg/l,Median IQR,IQR,660,"[420,900]",630,"[495,1030]",660,"[420,900]",580,"[430,915]",No washout period,
+Mateo-Gallego (2011),Cross-Over,4 weeks,">18 years old, woman nuns, overweight/obese",Chicken vs Lamb,34,34,34,Weight Values,kg,Median IQR,IQR,67.4,"[59.5,75]",66.8,"[59.1,74.9]",67.4,"[59.5,75]",67.2,"[58.2,73.9]",No washout period,
+Mateo-Gallego (2011),Cross-Over,4 weeks,">18 years old, woman nuns, overweight/obese",Chicken vs Lamb,34,34,34,HDL-Cholesterol,mg/l,Mean±SD,SD,554,19,518,17,554,19,526,17,No  washout period,
+Mateo-Gallego (2011),Cross-Over,4 weeks,">18 years old, woman nuns, overweight/obese",Chicken vs Lamb,34,34,34,LDL-Cholesterol,mg/l,Mean±SD,SD,1160,58,1190,54,1160,58,1190,64,No washout period,
+Mamo (2005),RCT,6 weeks,"37-57 years old, adults, dyslipidemic",Low protein vs. high protein,20,10,10,BMI Values,kg/m2,Mean±?,?,31.7,1.7,31.6,1.6,31.7,1.3,31.2,1.2,NA,Meat
+Mamo (2005),RCT,6 weeks,"37-57 years old, adults, dyslipidemic",Low protein vs. high protein,20,10,10,% Body Fat Values,,Mean±?,?,31.9,2.6,31.7,2.6,31.7,1.3,31.7,2.7,NA,Meat
+Mamo (2005),RCT,6 weeks,"37-57 years old, adults, dyslipidemic",Low protein vs. high protein,20,10,10,Total-cholesterol,mM,Mean±?,?,5.7,0.2,5.7,0.4,5.3,0.3,5.1,0.2,NA,Meat
+Mamo (2005),RCT,6 weeks,"37-57 years old, adults, dyslipidemic",Low protein vs. high protein,20,10,10,LDL-Cholesterol,mM,Mean±?,?,3.6,0.2,3.5,0.4,3.3,0.3,3.1,0.2,NA,Meat
+Mamo (2005),RCT,6 weeks,"37-57 years old, adults, dyslipidemic",Low protein vs. high protein,20,10,10,HDL-Cholesterol,mM,Mean±?,?,1.2,0.1,1.2,0.1,1.3,0.1,1.3,0.1,NA,Meat
+Mamo (2005),RCT,6 weeks,"37-57 years old, adults, dyslipidemic",Low protein vs. high protein,20,10,10,Triglyceride,mM,Mean±?,?,2,0.3,2.2,0.3,1.5,0.1,1.4,0.4,NA,Meat
+Mamo (2005),RCT,6 weeks,"37-57 years old, adults, dyslipidemic",Low protein vs. high protein,20,10,10,Weight Values,kg,Mean±?,?,94,5.8,94,5.5,90,3.5,89,3.6,NA,Meat
+Maki (2020),Cross-Over,4 weeks,"18-74 years old, adults, overweight/obese",Low meat vs. high meat,33,33,33,Total-cholesterol,mg/dl,"Mean (-1 SD, +1 SD)","(-1 SD, +1 SD)",188,"[157,226]",178,"[153,206]",188,"[157,226]",181,"(165, 211)",>2 weeks washout period,Meat
+Maki (2020),Cross-Over,4 weeks,"18-74 years old, adults, overweight/obese",Low meat vs. high meat,33,33,33,LDL-Cholesterol,mg/dl,"Mean (-1 SD, +1 SD)","(-1 SD, +1 SD)",112,"(85.8,145)",105,"(85.4,130)",112,"(85.8,145)",109,"(88.3,134)",>2 weeks washout period,Meat
+Maki (2020),Cross-Over,4 weeks,"18-74 years old, adults, overweight/obese",Low meat vs. high meat,33,33,33,HDL-Cholesterol,mg/dl,"Mean (-1 SD, +1 SD)","(-1 SD, +1 SD)",47.6,"(38.7,58.7)",44.6,"(39.1,50.9)",47.6,"(38.7,58.7)",45.5,"(39.9,51.9)",>2 weeks washout period,Meat
+Maki (2020),Cross-Over,4 weeks,"18-74 years old, adults, overweight/obese",Low meat vs. high meat,33,33,33,Triglyceride,mg/dl,"Mean (-1 SD, +1 SD)","(-1 SD, +1 SD)",115,"(72.2,183)",111,"(75.4,163)",115,"(72.2,183)",113,"(76.7,166)",>2 weeks washout period,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Chicken vs. beef,29,15,14,BMI Values,kg/m2,Mean±SD,SD,29.1,4.3,26.1,3.8,30.1,3.1,27.6,3.4,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Chicken vs. beef,29,15,14,Weight Values,kg,Mean±SD,SD,76.2,11,67.3,10,81,9.2,74.4,9.6,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Chicken vs. beef,29,15,14,% Body Fat Values,,Mean±SD,SD,42.9,4.1,39.6,4.7,43.4,5.1,41.3,6,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Chicken vs. beef,29,15,14,Total-cholesterol,mg/dl,Mean±SD,SD,218,37,198,42,241,57,218,53,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Chicken vs. beef,29,15,14,LDL-Cholesterol,mg/dl,Mean±SD,SD,141,40,125,32,157,49,140,39,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Chicken vs. beef,29,15,14,HDL-Cholesterol,mg/dl,Mean±SD,SD,50,10,50,12,59,15,57,13,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Chicken vs. beef,29,15,14,Triglyceride,mg/dl,Mean±SD,SD,139,57,114,61,127,57,104,45,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Control vs Beef,25,11,14,BMI Values,kg/m2,Mean±SD,SD,30.1,3.8,29.8,4.1,30.1,3.1,27.6,3.4,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Control vs Beef,25,11,14,Weight Values,kg,Mean±SD,SD,79.8,11.4,79.1,12.2,81,9.2,74.4,9.6,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Control vs Beef,25,11,14,% Body Fat Values,,Mean±SD,SD,44.9,6.7,44.7,6.5,43.4,5.1,41.3,6,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Control vs Beef,25,11,14,Total-cholesterol,mg/dl,Mean±SD,SD,300,70,294,73,241,57,218,53,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Control vs Beef,25,11,14,LDL-Cholesterol,mg/dl,Mean±SD,SD,184,32,174,30,157,49,140,39,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Control vs Beef,25,11,14,HDL-Cholesterol,mg/dl,Mean±SD,SD,68,15,71,13,59,15,57,13,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Control vs Beef,25,11,14,Triglyceride,mg/dl,Mean±SD,SD,156,46,154,55,127,57,104,45,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Carb vs Beef,28,14,14,BMI Values,kg/m2,Mean±SD,SD,28.4,3.3,26.3,3.2,30.1,3.1,27.6,3.4,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Carb vs Beef,28,14,14,Weight Values,kg,Mean±SD,SD,75.9,8.8,70.3,9,81,9.2,74.4,9.6,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Carb vs Beef,28,14,14,% Body Fat Values,,Mean±SD,SD,43.7,5.1,41.5,5.4,43.4,5.1,41.3,6,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Carb vs Beef,28,14,14,Total-cholesterol,mg/dl,Mean±SD,SD,284,87,240,42,241,57,218,53,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Carb vs Beef,28,14,14,LDL-Cholesterol,mg/dl,Mean±SD,SD,161,52,141,33,157,49,140,39,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Carb vs Beef,28,14,14,HDL-Cholesterol,mg/dl,Mean±SD,SD,73,19,61,13,59,15,57,13,Energy restricted diet,Meat
+Mahon (2007),RCT,9 weeks,"50-60 years old, women, menopausal",Carb vs Beef,28,14,14,Triglyceride,mg/dl,Mean±SD,SD,183,95,173,87,127,57,104,45,Energy restricted diet,Meat
+Li (2016),RCT,4 weeks,">21 years, adults", Lactoovovegetarian vs Omnivorous ,34,17,17,Total-cholesterol,mg/dl,Mean±SEM,SEM,176,6,143,6,186,9,154,8,Baseline vs. 30% protein,Meat
+Li (2016),RCT,4 weeks,">21 years, adults", Lactoovovegetarian vs Omnivorous ,34,17,17,LDL-Cholesterol,mg/dl,Mean±SEM,SEM,102,6,82,5,112,7,92,5,Baseline vs. 30% protein,Meat
+Li (2016),RCT,4 weeks,">21 years, adults", Lactoovovegetarian vs Omnivorous ,34,17,17,HDL-Cholesterol,mg/dl,Mean±SEM,SEM,53,3,44,2,50,3,42,2,Baseline vs. 30% protein,Meat
+Li (2016),RCT,4 weeks,">21 years, adults", Lactoovovegetarian vs Omnivorous ,34,17,17,Triglyceride,mg/dl,Mean±SEM,SEM,107,10,99,9,135,12,107,9,Baseline vs. 30% protein,Meat
+Hodgson (2006),RCT,8 weeks,">20 years old, adults, hypertensive",Habitual vs. Lean Red meat Carb replacment,60,31,29,Weight Values,kg,Mean±SD,SD,79.9,15.3,80,15.3,81.3,13.8,81.5,14.3,NA,Meat
+Hodgson (2006),RCT,8 weeks,">20 years old, adults, hypertensive",Habitual vs. Lean Red meat Carb replacment,60,31,29,Total-cholesterol,mmol/L,Mean±SD,SD,5,0.7,4.9,0.8,5,0.9,4.9,0.8,Serum,Meat
+Hodgson (2006),RCT,8 weeks,">20 years old, adults, hypertensive",Habitual vs. Lean Red meat Carb replacment,60,31,29,LDL-Cholesterol,mmol/L,Mean±SD,SD,2.9,0.7,2.7,0.8,3,0.8,3,0.7,Using formula,Meat
+Hodgson (2006),RCT,8 weeks,">20 years old, adults, hypertensive",Habitual vs. Lean Red meat Carb replacment,60,31,29,HDL-Cholesterol,mmol/L,Mean±SD,SD,1.5,0.4,1.48,0.44,1.43,0.46,1.42,0.41,Serum,Meat
+Hodgson (2006),RCT,8 weeks,">20 years old, adults, hypertensive",Habitual vs. Lean Red meat Carb replacment,60,31,29,Triglyceride,mmol/L,Mean±SD,SD,1.34,0.85,1.35,0.76,1.36,1.26,1.31,1.16,Serum,Meat
+Hill (2015),RCT,5 weeks,"30-60 years old, adults, overweight",M DASH vs. Bold +,42,21,21,BMI Values,kg/m2,Mean±SEM,SEM,34.2,0.5,34.1,0.5,35.1,0.7,34.9,0.7,"DASH diet, 5 weeks maintenance data ",Meat
+Hill (2015),RCT,5 weeks,"30-60 years old, adults, overweight",M DASH vs. Bold +,42,21,21,Weight Values,kg,Mean±SEM,SEM,100,2,100,2,105,3,104,3,"DASH diet, 5 weeks maintenance data ",Meat
+Hill (2015),RCT,5 weeks,"30-60 years old, adults, overweight",M DASH vs. Bold +,42,21,21,Total-cholesterol,mg/dl,Mean±SEM,SEM,198,5,188,5,191,6,177,6,"DASH diet, 5 weeks maintenance data ",Meat
+Hill (2015),RCT,5 weeks,"30-60 years old, adults, overweight",M DASH vs. Bold +,42,21,21,LDL-Cholesterol,mg/dl,Mean±SEM,SEM,126,4,117,4,118,5,107,5,"DASH diet, 5 weeks maintenance data ",Meat
+Hill (2015),RCT,5 weeks,"30-60 years old, adults, overweight",M DASH vs. Bold +,42,21,21,HDL-Cholesterol,mg/dl,Mean±SEM,SEM,36.3,1.2,33.9,1,40.2,1.7,35.6,1.6,"DASH diet, 5 weeks maintenance data ",Meat
+Hill (2015),RCT,5 weeks,"30-60 years old, adults, overweight",M DASH vs. Bold +,42,21,21,Triglyceride,mg/dl,Median ,95% CI,168,"[161,193]",185,"[168,205]",156,"[147,182]",155,"[148,193]","DASH diet, 5 weeks maintenance data ",Meat
+Hill (2015),RCT,5 weeks,"30-60 years old, adults, overweight",M DASH vs. Bold,41,21,20,BMI Values,kg/m2,Mean±SEM,SEM,34.2,0.5,34.1,0.5,34.4,0.6,34,0.6,"DASH diet, 5 weeks maintenance data ",Meat
+Hill (2015),RCT,5 weeks,"30-60 years old, adults, overweight",M DASH vs. Bold,41,21,20,Weight Values,kg,Mean±SEM,SEM,100,2,100,2,101,2,100,2,"DASH diet, 5 weeks maintenance data ",Meat
+Hill (2015),RCT,5 weeks,"30-60 years old, adults, overweight",M DASH vs. Bold,41,21,20,Total-cholesterol,mg/dl,Mean±SEM,SEM,198,5,188,5,198,8,197,8,"DASH diet, 5 weeks maintenance data ",Meat
+Hill (2015),RCT,5 weeks,"30-60 years old, adults, overweight",M DASH vs. Bold,41,21,20,LDL-Cholesterol,mg/dl,Mean±SEM,SEM,126,4,117,4,126,7,127,8,"DASH diet, 5 weeks maintenance data ",Meat
+Hill (2015),RCT,5 weeks,"30-60 years old, adults, overweight",M DASH vs. Bold,41,21,20,HDL-Cholesterol,mg/dl,Mean±SEM,SEM,36.3,1.2,33.9,1,38.4,1.1,35.2,1.1,"DASH diet, 5 weeks maintenance data ",Meat
+Hill (2015),RCT,5 weeks,"30-60 years old, adults, overweight",M DASH vs. Bold,41,21,20,Triglyceride,mg/dl,Median ,95% CI,168,"[161,193]",185,"[168,205]",156,"[144,203]",172,"[169,242]","DASH diet, 5 weeks maintenance data ",Meat
+Bergeron (2019),Cross-Over,4 weeks,"21-65 years old, adults",White meat vs. red meat   (LOW SFA ARM),51,51,51,Total-cholesterol,mmol/L,Mean±SD,SD,4.53,0.88,4.14,0.8,4.53,0.88,4.11,0.78,2-7 weeks washout ,
+Bergeron (2019),Cross-Over,4 weeks,"21-65 years old, adults",White meat vs. red meat   (LOW SFA ARM),51,51,51,LDL-Cholesterol,mmol/L,Mean±SD,SD,2.68,0.69,2.38,0.65,2.68,0.69,2.35,0.59,2-7 weeks washout ,
+Bergeron (2019),Cross-Over,4 weeks,"21-65 years old, adults",White meat vs. red meat   (LOW SFA ARM),51,51,51,HDL-Cholesterol,mmol/L,Mean±SD,SD,1.45,0.39,1.42,0.39,1.45,0.39,1.4,0.36,2-7 weeks washout ,
+Bergeron (2019),Cross-Over,4 weeks,"21-65 years old, adults",White meat vs. red meat   (LOW SFA ARM),51,51,51,Triglyceride,mmol/L,Mean±SD,SD,0.88,0.34,0.78,0.34,0.88,0.34,0.8,0.33,2-7 weeks washout ,
+Bergeron (2019),Cross-Over,4 weeks,"21-65 years old, adults",Non Meat vs. red meat   (LOW SFA ARM),51,51,51,Total-cholesterol,mmol/L,Mean±SD,SD,4.53,0.88,3.98,0.8,4.53,0.88,4.11,0.78,2-7 weeks washout ,
+Bergeron (2019),Cross-Over,4 weeks,"21-65 years old, adults",Non Meat vs. red meat   (LOW SFA ARM),51,51,51,LDL-Cholesterol,mmol/L,Mean±SD,SD,2.68,0.69,2.22,0.65,2.68,0.69,2.35,0.59,2-7 weeks washout ,
+Bergeron (2019),Cross-Over,4 weeks,"21-65 years old, adults",Non Meat vs. red meat   (LOW SFA ARM),51,51,51,HDL-Cholesterol,mmol/L,Mean±SD,SD,1.45,0.39,1.4,0.41,1.45,0.39,1.4,0.36,2-7 weeks washout ,
+Bergeron (2019),Cross-Over,4 weeks,"21-65 years old, adults",Non Meat vs. red meat   (LOW SFA ARM),51,51,51,Triglyceride,mmol/L,Mean±SD,SD,0.88,0.34,0.8,0.33,0.88,0.34,0.8,0.33,2-7 weeks washout ,
+Bergeron (2019),Cross-Over,4 weeks,"21-65 years old, adults",White meat vs. red meat   (HIGH SFA ARM),62,62,62,Total-cholesterol,mmol/L,Mean±SD,SD,4.5,0.8,4.39,0.83,4.5,0.8,4.42,0.93,2-7 weeks washout ,
+Bergeron (2019),Cross-Over,4 weeks,"21-65 years old, adults",White meat vs. red meat   (HIGH SFA ARM),62,62,62,LDL-Cholesterol,mmol/L,Mean±SD,SD,2.69,0.7,2.61,0.72,2.69,0.7,2.64,0.8,2-7 weeks washout ,
+Bergeron (2019),Cross-Over,4 weeks,"21-65 years old, adults",White meat vs. red meat   (HIGH SFA ARM),62,62,62,HDL-Cholesterol,mmol/L,Mean±SD,SD,1.35,0.31,1.34,0.31,1.35,0.31,1.34,0.31,2-7 weeks washout ,
+Bergeron (2019),Cross-Over,4 weeks,"21-65 years old, adults",White meat vs. red meat   (HIGH SFA ARM),62,62,62,Triglyceride,mmol/L,Mean±SD,SD,1.01,0.54,0.96,0.49,1.01,0.54,0.95,0.47,2-7 weeks washout ,
+Bergeron (2019),Cross-Over,4 weeks,"21-65 years old, adults",Non Meat vs. red meat   (HIGH SFA ARM),62,62,62,Total-cholesterol,mmol/L,Mean±SD,SD,4.5,0.8,4.22,0.83,4.5,0.8,4.42,0.93,2-7 weeks washout ,
+Bergeron (2019),Cross-Over,4 weeks,"21-65 years old, adults",Non Meat vs. red meat   (HIGH SFA ARM),62,62,62,LDL-Cholesterol,mmol/L,Mean±SD,SD,2.69,0.7,2.46,0.7,2.69,0.7,2.64,0.8,2-7 weeks washout ,
+Bergeron (2019),Cross-Over,4 weeks,"21-65 years old, adults",Non Meat vs. red meat   (HIGH SFA ARM),62,62,62,HDL-Cholesterol,mmol/L,Mean±SD,SD,1.35,0.31,1.29,0.31,1.35,0.31,1.34,0.31,2-7 weeks washout ,
+Bergeron (2019),Cross-Over,4 weeks,"21-65 years old, adults",Non Meat vs. red meat   (HIGH SFA ARM),62,62,62,Triglyceride,mmol/L,Mean±SD,SD,1.01,0.54,0.99,0.49,1.01,0.54,0.95,0.47,2-7 weeks washout ,
+Ashton (2000),Cross-Over,4 weeks,"35-62 years old, men",Tofu vs. red meat,42,42,42,Total-cholesterol,mmol/L,Mean±SD,SD,5.79,0.97,5.42,1.02,5.79,0.97,5.65,0.93,NA,Meat
+Ashton (2000),Cross-Over,4 weeks,"35-62 years old, men",Tofu vs. red meat,42,42,42,LDL-Cholesterol,mmol/L,Mean±SD,SD,3.68,0.86,3.48,0.92,3.68,0.86,3.56,0.9,NA,Meat
+Ashton (2000),Cross-Over,4 weeks,"35-62 years old, men",Tofu vs. red meat,42,42,42,HDL-Cholesterol,mmol/L,Mean±SD,SD,1.25,0.35,1.24,0.27,1.25,0.35,1.32,0.34,NA,Meat
+Ashton (2000),Cross-Over,4 weeks,"35-62 years old, men",Tofu vs. red meat,42,42,42,Triglyceride,mmol/L,Mean±SD,SD,1.96,1.33,1.62,0.99,1.96,1.33,1.77,0.95,NA,Meat
+Poddar (2013),RCT,24 weeks,"18-65 years old, overweight/obese",Mushroom vs. red meat,73,36,37,Weight Values,lbs,Mean±SE,SE,196.88,4.91,189.86,5.1,200.43,5.83,198.22,4.42,,Meat
+Poddar (2013),RCT,24 weeks,"18-65 years old, overweight/obese",Mushroom vs. red meat,73,36,37,BMI Values,kg/m2,Mean±SE,SE,33.89,0.63,31.56,1.07,33.98,0.62,32.95,0.57,,Meat
+Poddar (2013),RCT,24 weeks,"18-65 years old, overweight/obese",Mushroom vs. red meat,73,36,37,% Body Fat Values,,Mean±SE,SE,42.82,0.92,41.17,1.48,42.96,1.01,42.47,0.98,,Meat
+Hunninghake (2000),Cross-Over,36 weeks,"18-75 years old, men and women",White meat vs. red meat (sequence white-red),145,73,72,Total-cholesterol,mmol/L,Mean±SEM,SEM,6.2,0.06,6.1,0.06,6.2,0.06,6.14,0.07,,Meat
+Hunninghake (2000),Cross-Over,36 weeks,"18-75 years old, men and women",White meat vs. red meat (sequence white-red),145,73,72,LDL-Cholesterol,mmol/L,Mean±SEM,SEM,4.13,0.05,4.01,0.05,4.13,0.05,4.04,0.05,,Meat
+Hunninghake (2000),Cross-Over,36 weeks,"18-75 years old, men and women",White meat vs. red meat (sequence white-red),145,73,72,HDL-Cholesterol,mmol/L,Mean±SEM,SEM,1.34,0.04,1.37,0.04,1.34,0.04,1.39,0.04,,Meat
+Hunninghake (2000),Cross-Over,36 weeks,"18-75 years old, men and women",White meat vs. red meat (sequence white-red),145,73,72,Triglyceride,mmol/L,Mean±SEM,SEM,1.59,0.06,1.57,0.06,1.59,0.06,1.58,0.06,,Meat
+Hunninghake (2000),Cross-Over,36 weeks,"18-75 years old, men and women",White meat vs. red meat (sequence red-white),145,73,72,Total-cholesterol,mmol/L,Mean±SEM,SEM,6.16,0.05,6.13,0.06,6.16,0.05,6.11,0.06,,Meat
+Hunninghake (2000),Cross-Over,36 weeks,"18-75 years old, men and women",White meat vs. red meat (sequence red-white),145,73,72,LDL-Cholesterol,mmol/L,Mean±SEM,SEM,4.04,0.05,4.01,0.05,4.04,0.05,3.97,0.05,,Meat
+Hunninghake (2000),Cross-Over,36 weeks,"18-75 years old, men and women",White meat vs. red meat (sequence red-white),145,73,72,HDL-Cholesterol,mmol/L,Mean±SEM,SEM,1.34,0.04,1.36,0.04,1.34,0.04,1.36,0.04,,Meat
+Hunninghake (2000),Cross-Over,36 weeks,"18-75 years old, men and women",White meat vs. red meat (sequence red-white),145,73,72,Triglyceride,mmol/L,Mean±SEM,SEM,1.71,0.09,1.69,0.1,1.71,0.09,1.71,0.09,,Meat

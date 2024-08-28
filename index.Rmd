@@ -1,0 +1,4730 @@
+---
+title: "URM Meta-analysis"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+    source_code: embed
+    social: ["menu"]
+    navbar:
+      - { title: "Created by: Daniel Baller", icon: "fa-github", href: "https://github.com/danielpballer"  }
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(flexdashboard)
+library(tidyverse)
+library(esc)
+library(skimr)
+library(data.table)
+library(meta)
+library(metafor)
+library(dmetar)
+library(gt)
+library(knitr)
+library(ggrepel)
+library(plotly)
+library(metaviz)
+library(DT)
+```
+
+```{r loading data}
+total_data = read_csv("Meta_Analysis_Data.csv")
+```
+
+```{r  split data rct and crossover}
+#creating a new column that is the author, year, and comparison
+total_data = total_data %>%
+  #creating a variable that is the Author (Year) - Comparison
+  mutate(auth_treat = str_c(`Author (Year)`, `Control vs. Treatment`, sep = " - ")) %>% 
+  #changing the auth_treat variable we created from character to factor
+  mutate(auth_treat = as.factor(auth_treat))
+
+#removing non UTF-8 Characters from strings
+total_data = total_data %>% 
+  mutate(Data = iconv(Data,"UTF-8", "UTF-8",sub=' ')) 
+
+#Converting units so they are all the same. Triglyceride, HDL, and LDL mmol/L -> mg/dl, weight lbs -> kg
+total_data = total_data %>% 
+  mutate(Control_Baseline_Variability = as.numeric(Control_Baseline_Variability)) %>% 
+  mutate(`Control_Post-intervention_Variability` = as.numeric(`Control_Post-intervention_Variability`)) %>% 
+  mutate(Treatment_Baseline_Variability = as.numeric(Treatment_Baseline_Variability)) %>% 
+  mutate(`Treatment_Post-intervention_Variability` = as.numeric(`Treatment_Post-intervention_Variability`)) %>% 
+  #Converting Triglyceride measurements in mmol/L to mg/dl: mmol/L * 88.57 = mg/dl
+  mutate(Control_Baseline_Mean = case_when(Metric == "Triglyceride" & Unit == "mmol/L" ~ Control_Baseline_Mean*88.57, 
+                                                         TRUE~Control_Baseline_Mean)) %>% 
+  mutate(Control_Baseline_Variability = case_when(Metric == "Triglyceride" & Unit == "mmol/L" ~ Control_Baseline_Variability*88.57, 
+                                                         TRUE~Control_Baseline_Variability)) %>% 
+  mutate(`Control_Post-intervention_Mean` = case_when(Metric == "Triglyceride" & Unit == "mmol/L" ~ `Control_Post-intervention_Mean`*88.57, 
+                                                         TRUE~`Control_Post-intervention_Mean`)) %>% 
+  mutate(`Control_Post-intervention_Variability` = case_when(Metric == "Triglyceride" & Unit == "mmol/L" ~ `Control_Post-intervention_Variability`*88.57, 
+                                                         TRUE~`Control_Post-intervention_Variability`)) %>% 
+  mutate(Treatment_Baseline_Mean = case_when(Metric == "Triglyceride" & Unit == "mmol/L" ~ Treatment_Baseline_Mean*88.57, 
+                                                         TRUE~Treatment_Baseline_Mean)) %>% 
+  mutate(Treatment_Baseline_Variability = case_when(Metric == "Triglyceride" & Unit == "mmol/L" ~ Treatment_Baseline_Variability*88.57, 
+                                                         TRUE~Treatment_Baseline_Variability)) %>% 
+  mutate(`Treatment_Post-intervention_Mean` = case_when(Metric == "Triglyceride" & Unit == "mmol/L" ~ `Treatment_Post-intervention_Mean`*88.57, 
+                                                         TRUE~`Treatment_Post-intervention_Mean`)) %>% 
+  mutate(`Treatment_Post-intervention_Variability` = case_when(Metric == "Triglyceride" & Unit == "mmol/L" ~ `Treatment_Post-intervention_Variability`*88.57, 
+                                                         TRUE~`Treatment_Post-intervention_Variability`)) %>% 
+  mutate(Unit = case_when(Metric == "Triglyceride" & Unit == "mmol/L" ~ "mg/dl", 
+                                                         TRUE~Unit)) %>% 
+  #Converting HDL-Cholesterol measurements in mmol/L to mg/dl: mmol/L * 38.67 = mg/dl
+  mutate(Control_Baseline_Mean = case_when(Metric == "HDL-Cholesterol" & Unit == "mmol/L" ~ Control_Baseline_Mean*38.67, 
+                                                         TRUE~Control_Baseline_Mean)) %>% 
+  mutate(Control_Baseline_Variability = case_when(Metric == "HDL-Cholesterol" & Unit == "mmol/L" ~ Control_Baseline_Variability*38.67, 
+                                                         TRUE~Control_Baseline_Variability)) %>% 
+  mutate(`Control_Post-intervention_Mean` = case_when(Metric == "HDL-Cholesterol" & Unit == "mmol/L" ~ `Control_Post-intervention_Mean`*38.67, 
+                                                         TRUE~`Control_Post-intervention_Mean`)) %>% 
+  mutate(`Control_Post-intervention_Variability` = case_when(Metric == "HDL-Cholesterol" & Unit == "mmol/L" ~ `Control_Post-intervention_Variability`*38.67, 
+                                                         TRUE~`Control_Post-intervention_Variability`)) %>% 
+  mutate(Treatment_Baseline_Mean = case_when(Metric == "HDL-Cholesterol" & Unit == "mmol/L" ~ Treatment_Baseline_Mean*38.67, 
+                                                         TRUE~Treatment_Baseline_Mean)) %>% 
+  mutate(Treatment_Baseline_Variability = case_when(Metric == "HDL-Cholesterol" & Unit == "mmol/L" ~ Treatment_Baseline_Variability*38.67, 
+                                                         TRUE~Treatment_Baseline_Variability)) %>% 
+  mutate(`Treatment_Post-intervention_Mean` = case_when(Metric == "HDL-Cholesterol" & Unit == "mmol/L" ~ `Treatment_Post-intervention_Mean`*38.67, 
+                                                         TRUE~`Treatment_Post-intervention_Mean`)) %>% 
+  mutate(`Treatment_Post-intervention_Variability` = case_when(Metric == "HDL-Cholesterol" & Unit == "mmol/L" ~ `Treatment_Post-intervention_Variability`*38.67, 
+                                                         TRUE~`Treatment_Post-intervention_Variability`)) %>% 
+  mutate(Unit = case_when(Metric == "HDL-Cholesterol" & Unit == "mmol/L" ~ "mg/dl", 
+                                                         TRUE~Unit)) %>% 
+#Converting LDL-Cholesterol measurements in mmol/L to mg/dl: mmol/L * 38.67 = mg/dl
+  mutate(Control_Baseline_Mean = case_when(Metric == "LDL-Cholesterol" & Unit == "mmol/L" ~ Control_Baseline_Mean*38.67, 
+                                                         TRUE~Control_Baseline_Mean)) %>% 
+  mutate(Control_Baseline_Variability = case_when(Metric == "LDL-Cholesterol" & Unit == "mmol/L" ~ Control_Baseline_Variability*38.67, 
+                                                         TRUE~Control_Baseline_Variability)) %>% 
+  mutate(`Control_Post-intervention_Mean` = case_when(Metric == "LDL-Cholesterol" & Unit == "mmol/L" ~ `Control_Post-intervention_Mean`*38.67, 
+                                                         TRUE~`Control_Post-intervention_Mean`)) %>% 
+  mutate(`Control_Post-intervention_Variability` = case_when(Metric == "LDL-Cholesterol" & Unit == "mmol/L" ~ `Control_Post-intervention_Variability`*38.67, 
+                                                         TRUE~`Control_Post-intervention_Variability`)) %>% 
+  mutate(Treatment_Baseline_Mean = case_when(Metric == "LDL-Cholesterol" & Unit == "mmol/L" ~ Treatment_Baseline_Mean*38.67, 
+                                                         TRUE~Treatment_Baseline_Mean)) %>% 
+  mutate(Treatment_Baseline_Variability = case_when(Metric == "LDL-Cholesterol" & Unit == "mmol/L" ~ Treatment_Baseline_Variability*38.67, 
+                                                         TRUE~Treatment_Baseline_Variability)) %>% 
+  mutate(`Treatment_Post-intervention_Mean` = case_when(Metric == "LDL-Cholesterol" & Unit == "mmol/L" ~ `Treatment_Post-intervention_Mean`*38.67, 
+                                                         TRUE~`Treatment_Post-intervention_Mean`)) %>% 
+  mutate(`Treatment_Post-intervention_Variability` = case_when(Metric == "LDL-Cholesterol" & Unit == "mmol/L" ~ `Treatment_Post-intervention_Variability`*38.67, 
+                                                         TRUE~`Treatment_Post-intervention_Variability`)) %>% 
+  mutate(Unit = case_when(Metric == "LDL-Cholesterol" & Unit == "mmol/L" ~ "mg/dl", 
+                                                         TRUE~Unit)) %>% 
+    #Converting Total-cholesterol measurements in mmol/L to mg/dl: mmol/L * 38.67 = mg/dl
+  mutate(Control_Baseline_Mean = case_when(Metric == "Total-cholesterol" & Unit == "mmol/L" ~ Control_Baseline_Mean*38.67, 
+                                                         TRUE~Control_Baseline_Mean)) %>% 
+  mutate(Control_Baseline_Variability = case_when(Metric == "Total-cholesterol" & Unit == "mmol/L" ~ Control_Baseline_Variability*38.67, 
+                                                         TRUE~Control_Baseline_Variability)) %>% 
+  mutate(`Control_Post-intervention_Mean` = case_when(Metric == "Total-cholesterol" & Unit == "mmol/L" ~ `Control_Post-intervention_Mean`*38.67, 
+                                                         TRUE~`Control_Post-intervention_Mean`)) %>% 
+  mutate(`Control_Post-intervention_Variability` = case_when(Metric == "Total-cholesterol" & Unit == "mmol/L" ~ `Control_Post-intervention_Variability`*38.67, 
+                                                         TRUE~`Control_Post-intervention_Variability`)) %>% 
+  mutate(Treatment_Baseline_Mean = case_when(Metric == "Total-cholesterol" & Unit == "mmol/L" ~ Treatment_Baseline_Mean*38.67, 
+                                                         TRUE~Treatment_Baseline_Mean)) %>% 
+  mutate(Treatment_Baseline_Variability = case_when(Metric == "Total-cholesterol" & Unit == "mmol/L" ~ Treatment_Baseline_Variability*38.67, 
+                                                         TRUE~Treatment_Baseline_Variability)) %>% 
+  mutate(`Treatment_Post-intervention_Mean` = case_when(Metric == "Total-cholesterol" & Unit == "mmol/L" ~ `Treatment_Post-intervention_Mean`*38.67, 
+                                                         TRUE~`Treatment_Post-intervention_Mean`)) %>% 
+  mutate(`Treatment_Post-intervention_Variability` = case_when(Metric == "Total-cholesterol" & Unit == "mmol/L" ~ `Treatment_Post-intervention_Variability`*38.67, 
+                                                         TRUE~`Treatment_Post-intervention_Variability`)) %>% 
+  mutate(Unit = case_when(Metric == "Total-cholesterol" & Unit == "mmol/L" ~ "mg/dl", 
+                                                         TRUE~Unit)) %>% 
+  #Converting Weight Values measurements in lbs to kg: lbs * 0.4536 = kg
+  mutate(Control_Baseline_Mean = case_when(Metric == "Weight Values" & Unit == "mmol/L" ~ Control_Baseline_Mean*0.4536, 
+                                                         TRUE~Control_Baseline_Mean)) %>% 
+  mutate(Control_Baseline_Variability = case_when(Metric == "Weight Values" & Unit == "mmol/L" ~ Control_Baseline_Variability*0.4536, 
+                                                         TRUE~Control_Baseline_Variability)) %>% 
+  mutate(`Control_Post-intervention_Mean` = case_when(Metric == "Weight Values" & Unit == "mmol/L" ~ `Control_Post-intervention_Mean`*0.4536, 
+                                                         TRUE~`Control_Post-intervention_Mean`)) %>% 
+  mutate(`Control_Post-intervention_Variability` = case_when(Metric == "Weight Values" & Unit == "mmol/L" ~ `Control_Post-intervention_Variability`*0.4536, 
+                                                         TRUE~`Control_Post-intervention_Variability`)) %>% 
+  mutate(Treatment_Baseline_Mean = case_when(Metric == "Weight Values" & Unit == "mmol/L" ~ Treatment_Baseline_Mean*0.4536, 
+                                                         TRUE~Treatment_Baseline_Mean)) %>% 
+  mutate(Treatment_Baseline_Variability = case_when(Metric == "Weight Values" & Unit == "mmol/L" ~ Treatment_Baseline_Variability*0.4536, 
+                                                         TRUE~Treatment_Baseline_Variability)) %>% 
+  mutate(`Treatment_Post-intervention_Mean` = case_when(Metric == "Weight Values" & Unit == "mmol/L" ~ `Treatment_Post-intervention_Mean`*0.4536, 
+                                                         TRUE~`Treatment_Post-intervention_Mean`)) %>% 
+  mutate(`Treatment_Post-intervention_Variability` = case_when(Metric == "Weight Values" & Unit == "mmol/L" ~ `Treatment_Post-intervention_Variability`*0.4536, 
+                                                         TRUE~`Treatment_Post-intervention_Variability`)) %>% 
+  mutate(Unit = case_when(Metric == "Weight Values" & Unit == "lbs" ~ "kg", 
+                                                         TRUE~Unit)) %>% 
+  #Converting all measurements in mg/l to mg/dl: mg/l / 10= mg/dl
+  mutate(Control_Baseline_Mean = case_when(Unit == "mg/l" ~ Control_Baseline_Mean/10, 
+                                                         TRUE~Control_Baseline_Mean)) %>% 
+  mutate(Control_Baseline_Variability = case_when(Unit == "mg/l" ~ Control_Baseline_Variability/10, 
+                                                         TRUE~Control_Baseline_Variability)) %>% 
+  mutate(`Control_Post-intervention_Mean` = case_when(Unit == "mg/l" ~ `Control_Post-intervention_Mean`/10, 
+                                                         TRUE~`Control_Post-intervention_Mean`)) %>% 
+  mutate(`Control_Post-intervention_Variability` = case_when(Unit == "mg/l" ~ `Control_Post-intervention_Variability`/10, 
+                                                         TRUE~`Control_Post-intervention_Variability`)) %>% 
+  mutate(Treatment_Baseline_Mean = case_when(Unit == "mg/l" ~ Treatment_Baseline_Mean/10, 
+                                                         TRUE~Treatment_Baseline_Mean)) %>% 
+  mutate(Treatment_Baseline_Variability = case_when(Unit == "mg/l" ~ Treatment_Baseline_Variability/10, 
+                                                         TRUE~Treatment_Baseline_Variability)) %>% 
+  mutate(`Treatment_Post-intervention_Mean` = case_when(Unit == "mg/l" ~ `Treatment_Post-intervention_Mean`/10, 
+                                                         TRUE~`Treatment_Post-intervention_Mean`)) %>% 
+  mutate(`Treatment_Post-intervention_Variability` = case_when(Unit == "mg/l" ~ `Treatment_Post-intervention_Variability`/10, 
+                                                         TRUE~`Treatment_Post-intervention_Variability`)) %>% 
+  mutate(Unit = case_when(Unit == "mg/l" ~ "mg/dl", 
+                                                         TRUE~Unit))
+
+  
+#one comparison from Murphy (2008) Pork vs. Beef was removed from analysis due to both pork and beef being considered as red meat.
+total_data2 = total_data %>% 
+  filter(auth_treat != "Murphy (2014) - Pork vs. Beef")
+
+#Separating into data sets of RCT and Cross-over trials.  
+#Two studies are neither (Perry 2020 and Renya 2008).  Neither study has a control group. These studies will be removed when the rct and crossover datasets are created.   
+
+rct = total_data2 %>% filter(Type=="RCT") %>% arrange(`Author (Year)`)
+cross_over = total_data2 %>% filter(Type=="Cross-Over") %>% arrange()
+```
+
+
+```{r effect size functions}
+# Functions
+
+#The below functions will calculate the effect sizes for each study and add the results back to the original data.  Separate functions are created based on the type of variability reported (either SD or SEM). Functions `esc_mean_sd()` and `esc_mean_sem()` from the esc package are utilized for calculating effect sizes.  Both functions calculate effects on the standardized mean difference.
+
+####################################################################
+# Function for calculating effect size when when variability is SD
+####################################################################
+effect_size_sd = function(data){
+
+#calculating effect size for the row.  Each argument maps to a variable in the dataset.
+mod = esc_mean_sd(grp1m = as.numeric(data$`Control_Post-intervention_Mean`), 
+            grp2m = as.numeric(data$`Treatment_Post-intervention_Mean`),
+            grp1sd = as.numeric(data$`Control_Post-intervention_Variability`), 
+            grp2sd = as.numeric(data$`Treatment_Post-intervention_Variability`), 
+            grp1n = data$n_control, 
+            grp2n = data$n_treatment)
+
+#saving the individual pieces of the effect size output.  
+effect_size = mod$es
+std_error = mod$se
+lower_ci = mod$ci.lo
+upper_ci = mod$ci.hi
+weight = mod$w
+measurement = mod$measure
+
+#adding the pieces of the effect size output back into the dataset.
+data %>% add_column(effect_size, std_error, lower_ci, upper_ci, weight, measurement)
+}
+
+###################################################################
+# Function for calculating effect size when when variability is SEM
+###################################################################
+effect_size_sem = function(data){
+
+#calculating effect size for the row.  Each argument maps to a variable in the dataset.
+mod = esc_mean_se(grp1m = as.numeric(data$`Control_Post-intervention_Mean`), 
+            grp2m = as.numeric(data$`Treatment_Post-intervention_Mean`),
+            grp1se = as.numeric(data$`Control_Post-intervention_Variability`), 
+            grp2se = as.numeric(data$`Treatment_Post-intervention_Variability`), 
+            grp1n = data$n_control, 
+            grp2n = data$n_treatment)
+
+#saving the individual pieces of the effect size output.  
+effect_size = mod$es
+std_error = mod$se
+lower_ci = mod$ci.lo
+upper_ci = mod$ci.hi
+weight = mod$w
+measurement = mod$measure
+
+#adding the pieces of the effect size output back into the dataset.
+data %>% add_column(effect_size, std_error, lower_ci, upper_ci, weight, measurement)
+}
+```
+
+```{r individual effect size RCT SD}
+# Calculating Effect size for RCT with SD as variability
+#Turn the dataframe into a list where each entry is a row. 
+rct_list_sd = rct %>% 
+  #removing observations without a control group
+  drop_na(`Control_Post-intervention_Mean`) %>% 
+  #selecting observations where the variability is SD
+  filter(Variability=="SD") %>% 
+  #splitting the data frame into the list
+  split(seq(nrow(.)))
+
+#mapping the function to the list and collapsing back into a dataframe.
+effect_rct_sd = map(rct_list_sd, effect_size_sd) %>% rbindlist()
+```
+
+```{r individual effect size RCT SEM}
+# Calculating Effect size for RCT with SEM as variability
+#Turn the dataframe into a list where each entry is a row. 
+rct_list_sem = rct %>% 
+  #removing observations without a control group
+  drop_na(`Control_Post-intervention_Mean`) %>% 
+  #selecting observations where the variability is SD
+  filter(Variability=="SEM" | Variability=="SE") %>% 
+  #splitting the data frame into the list
+  split(seq(nrow(.)))
+
+#mapping the function to the list and collapsing back into a dataframe.
+effect_rct_sem = map(rct_list_sem, effect_size_sem) %>% rbindlist()
+```
+
+```{r full RCT individual effect size}
+# Combining effect size data for RCTs for both SD and SEM reported variability
+effect_rct = rbind(effect_rct_sd, effect_rct_sem) %>% 
+  #creating a variable that is the Author (Year) - Comparison
+  mutate(auth_treat = str_c(`Author (Year)`, `Control vs. Treatment`, sep = " - ")) %>% 
+  #changing the auth_treat variable we created from character to factor
+  mutate(auth_treat = as.factor(auth_treat))
+
+#The `unable_rct` dataframe contains the observations that effect size could not be calculated on due to not knowing the measure of reported variability or reporting median and 95% CI. The three studies that we are unable to calculate effect sizes for some metrics are Hill (2015), Mamo (2005), and Ziegler (2015)
+
+unable_rct = anti_join(rct, effect_rct)
+```
+
+```{r individual effect size Crossover SD}
+# Calculating Effect size for Cross Over Trials with SD as variability
+
+#Turn the dataframe into a list where each entry is a row. 
+cross_over_list_sd = cross_over %>% 
+  #removing observations without a control group
+  drop_na(`Control_Post-intervention_Mean`) %>% 
+  #selecting observations where the variability is SD
+  filter(Variability=="SD") %>% 
+  #splitting the data frame into the list
+  split(seq(nrow(.)))
+
+#mapping the function to the list and collapsing back into a dataframe.
+effect_cross_over_sd = map(cross_over_list_sd, effect_size_sd) %>% rbindlist()
+```
+
+```{r individual effect size Crossover SEM}
+# Calculating Effect size for Cross Over trials with SEM as variability
+
+#Turn the dataframe into a list where each entry is a row. 
+cross_over_list_sem = cross_over %>% 
+  #removing observations without a control group
+  drop_na(`Control_Post-intervention_Mean`) %>% 
+  #selecting observations where the variability is SD
+  filter(Variability=="SEM" | Variability=="SE") %>% 
+  #splitting the data frame into the list
+  split(seq(nrow(.)))
+
+#mapping the function to the list and collapsing back into a dataframe.
+effect_cross_over_sem = map(cross_over_list_sem, effect_size_sem) %>% rbindlist()
+```
+
+
+```{r full crossover individual effect size}
+# Combining effect size data for cross over trials
+effect_cross_over = rbind(effect_cross_over_sd, effect_cross_over_sem) %>% 
+  #creating a variable that is the Author (Year) - Comparison
+  mutate(auth_treat = str_c(`Author (Year)`, `Control vs. Treatment`, sep = " - ")) %>% 
+  #changing the auth_treat variable we created from character to factor
+  mutate(auth_treat = as.factor(auth_treat))
+
+#The `unable_cross_over` dataframe contains the observations that effect size could not be calculated on due to not knowing the measure of reported variability or reporting median and 95% CI. The three studies that we are unable to calculate effect sizes for some metrics are are Smith (2001), Mateo-Gallego (2011), and Maki (2020).
+
+unable_cross_over = anti_join(cross_over, effect_cross_over)
+
+#combining all effect sizes for funnel plots
+all_effect_sizes = rbind(effect_rct, effect_cross_over)  %>%
+  #Changing non-numeric values in the data to numeric (mean, var, etc...)
+  mutate(`Control_Post-intervention_Mean` = as.numeric(`Control_Post-intervention_Mean`)) %>% 
+  mutate(`Treatment_Post-intervention_Mean` = as.numeric(`Treatment_Post-intervention_Mean`)) %>%
+  mutate(`Control_Post-intervention_Variability`=as.numeric(`Control_Post-intervention_Variability`)) %>% 
+  mutate(`Treatment_Post-intervention_Variability`=as.numeric(`Treatment_Post-intervention_Variability`))
+#write_csv(all_effect_sizes, "all_effect_sizes.csv")
+```
+
+```{r Pooled effect size all RCT}
+# Calculating and visualizing Pooled Effect Sizes (RCT) all comparisons (unfiltered)
+
+## Pooled Effects Calculation
+
+#The following section calculates the pooled effect size of each health metric for the RCTS. Output is a meta object.  This can then be used to create the forest plots.  Each effect size is computed with both a fixed effect and random effects models.  The DerSimonian-Laird ("DL") estimator is used to estimate $\tau^2$, the variance of the true effect sizes. Knapp-Hartung adjustment to control for the uncertainty in our estimate of the between-study heterogeneity are not used.  Using the Knapp-Hartung adjustments would result in wider confidence intervals. 
+
+# Weight Values
+WeightValues_rct = effect_rct %>% filter(Metric=="Weight Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#Total-cholesterol
+Total_cholesterol_rct = effect_rct %>% filter(Metric=="Total-cholesterol") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#LDL-Cholesterol
+LDL_Cholesterol_rct = effect_rct %>% filter(Metric=="LDL-Cholesterol") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#HDL-Cholesterol
+HDL_Cholesterol_rct = effect_rct %>% filter(Metric=="HDL-Cholesterol") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#Triglyceride
+Triglyceride_rct = effect_rct %>% filter(Metric=="Triglyceride") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#BMI Values
+BMIValues_rct = effect_rct %>% filter(Metric=="BMI Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#% Body Fat Values
+PercentBodyFatValues_rct = effect_rct %>% filter(Metric=="% Body Fat Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+```
+
+```{r forest plots all RCT, include=FALSE, out.height="100%", out.width="100%"}
+## Forest Plots (RCT) all comparisons (unfiltered)
+
+#This section creates forest plots for each metric for the rct studies
+
+#Weight Values
+png(file = "./Forest_Plots/forest_weight_rct.png", width = 3800, height = 2400, res = 300)
+
+forest(WeightValues_rct, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Weight)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#Total Cholesterol
+png(file = "./Forest_Plots/forest_total_cholesterol_rct.png", width = 3800, height = 2400, res = 300)
+
+forest(Total_cholesterol_rct, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Total Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#LDL Cholesterol
+png(file = "./Forest_Plots/forest_LDL_cholesterol_rct.png", width = 3800, height = 2400, res = 300)
+
+forest(LDL_Cholesterol_rct, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (LDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#HDL Cholesterol
+png(file = "./Forest_Plots/forest_HDL_cholesterol_rct.png", width = 3800, height = 2400, res = 300)
+
+forest(HDL_Cholesterol_rct, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (HDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#Triglyceride
+png(file = "./Forest_Plots/forest_Triglycerides_rct.png", width = 3800, height = 2400, res = 300)
+
+forest(Triglyceride_rct, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Triglycerides)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#BMI
+png(file = "./Forest_Plots/forest_BMI_rct.png", width = 3800, height = 2400, res = 300)
+
+forest(BMIValues_rct, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (BMI)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#% Body Fat
+png(file = "./Forest_Plots/forest_percent_body_fat_rct.png", width = 3800, height = 2400, res = 300)
+
+forest(PercentBodyFatValues_rct, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (% Body Fat)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+```
+
+```{r Pooled effect size all Studies}
+# Calculating and visualizing Pooled Effect Sizes (all studies) all comparisons (unfiltered)
+
+## Pooled Effects Calculation
+
+#The following section calculates the pooled effect size of each health metric for all studies (RCT and Crossover). Output is a meta object.  This can then be used to create the forest plots.  Each effect size is computed with both a fixed effect and random effects models.  The DerSimonian-Laird ("DL") estimator is used to estimate $\tau^2$, the variance of the true effect sizes. Knapp-Hartung adjustment to control for the uncertainty in our estimate of the between-study heterogeneity are not used.  Using the Knapp-Hartung adjustments would result in wider confidence intervals. 
+
+effect_all = rbind(effect_rct, effect_cross_over)
+
+# Weight Values
+WeightValues_all = effect_all %>% filter(Metric=="Weight Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#Total-cholesterol
+Total_cholesterol_all = effect_all %>% filter(Metric=="Total-cholesterol") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#LDL-Cholesterol
+LDL_Cholesterol_all = effect_all %>% filter(Metric=="LDL-Cholesterol") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#HDL-Cholesterol
+HDL_Cholesterol_all = effect_all %>% filter(Metric=="HDL-Cholesterol") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#Triglyceride
+Triglyceride_all = effect_all %>% filter(Metric=="Triglyceride") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#BMI Values
+BMIValues_all = effect_all %>% filter(Metric=="BMI Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#% Body Fat Values
+PercentBodyFatValues_all = effect_all %>% filter(Metric=="% Body Fat Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+```
+
+```{r forest plots all studies, include=FALSE, out.height="100%", out.width="100%"}
+## Forest Plots (all studies) all comparisons (unfiltered)
+
+#This section creates forest plots for each metric for all studies.
+
+#Weight Values
+png(file = "./Forest_Plots/forest_weight_all.png", width = 3800, height = 2400, res = 300)
+
+forest(WeightValues_all, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Weight)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+dev.off()
+
+#Total Cholesterol
+png(file = "./Forest_Plots/forest_total_cholesterol_all.png", width = 3800, height = 2400, res = 300)
+
+forest(Total_cholesterol_all, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Total Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#LDL Cholesterol
+png(file = "./Forest_Plots/forest_LDL_cholesterol_all.png", width = 3800, height = 2400, res = 300)
+
+forest(LDL_Cholesterol_all, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (LDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#HDL Cholesterol
+png(file = "./Forest_Plots/forest_HDL_cholesterol_all.png", width = 3800, height = 2400, res = 300)
+
+forest(HDL_Cholesterol_all, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (HDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#Triglyceride
+png(file = "./Forest_Plots/forest_Triglycerides_all.png", width = 3800, height = 2400, res = 300)
+
+forest(Triglyceride_all, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Triglycerides)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#BMI
+png(file = "./Forest_Plots/forest_BMI_all.png", width = 3800, height = 2400, res = 300)
+
+forest(BMIValues_all, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (BMI)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#% Body Fat
+png(file = "./Forest_Plots/forest_percent_body_fat_all.png", width = 3800, height = 2400, res = 300)
+
+forest(PercentBodyFatValues_all, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (% Body Fat)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+```
+
+```{r pooled effect size all crossover}
+# Calculating and visualizing Pooled Effect Sizes (Crossover trials) all comparisons
+
+## Pooled Effects Calculation
+
+#The following section calculates the pooled effect size of each health metric for the crossover trials. Output is a meta object.  This can then be used to create the forest plots.  Each effect size is computed with both a fixed effect and random effects models.  The DerSimonian-Laird ("DL") estimator is used to estimate $\tau^2$, the variance of the true effect sizes. Knapp-Hartung adjustment to control for the uncertainty in our estimate of the between-study heterogeneity are not used.  Using the Knapp-Hartung adjustments would result in wider confidence intervals.  
+
+# Weight Values
+WeightValues_crossover = effect_cross_over %>% filter(Metric=="Weight Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#Total-cholesterol
+Total_cholesterol_crossover = effect_cross_over %>% filter(Metric=="Total-cholesterol") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#LDL-Cholesterol
+LDL_Cholesterol_crossover = effect_cross_over %>% filter(Metric=="LDL-Cholesterol") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#HDL-Cholesterol
+HDL_Cholesterol_crossover = effect_cross_over %>% filter(Metric=="HDL-Cholesterol") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#Triglyceride
+Triglyceride_crossover = effect_cross_over %>% filter(Metric=="Triglyceride") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#BMI Values
+BMIValues_crossover = effect_cross_over %>% filter(Metric=="BMI Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#% Body Fat Values
+PercentBodyFatValues_crossover = effect_cross_over %>% filter(Metric=="% Body Fat Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+```
+
+```{r forest plots all crossover, include=FALSE, out.height="100%", out.width="100%"}
+## Forest Plots (crossover) all comparisons
+
+#This section creates forest plots for each metric for the crossover studies
+
+#Weight Values
+png(file = "./Forest_Plots/forest_weight_crossover.png", width = 3800, height = 2400, res = 300)
+
+forest(WeightValues_crossover, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Weight)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#Total Cholesterol
+png(file = "./Forest_Plots/forest_total_cholesterol_crossover.png", width = 3800, height = 2400, res = 300)
+
+forest(Total_cholesterol_crossover, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Total Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#LDL Cholesterol
+png(file = "./Forest_Plots/forest_LDL_cholesterol_crossover.png", width = 3800, height = 2400, res = 300)
+
+forest(LDL_Cholesterol_crossover, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (LDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#HDL Cholesterol
+png(file = "./Forest_Plots/forest_HDL_cholesterol_crossover.png", width = 3800, height = 2400, res = 300)
+
+forest(HDL_Cholesterol_crossover, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (HDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#Triglyceride
+png(file = "./Forest_Plots/forest_Triglycerides_crossover.png", width = 3800, height = 2400, res = 300)
+
+forest(Triglyceride_crossover, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Triglycerides)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#BMI
+png(file = "./Forest_Plots/forest_BMI_crossover.png", width = 3800, height = 2400, res = 300)
+
+forest(BMIValues_crossover, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (BMI)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#% Body Fat
+png(file = "./Forest_Plots/forest_percent_body_fat_crossover.png", width = 3800, height = 2400, res = 300)
+
+forest(PercentBodyFatValues_crossover, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (% Body Fat)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+```
+
+```{r pooled effect size min rct}
+# Calculating and visualizing Pooled Effect Sizes (RCT) Minimum effect size for each study
+
+## Pooled Effects Calculation
+
+#The following section calculates the pooled effect size of each health metric for the RCTS.  To control for  correlated effects in studies with multiple treatments only the minimum effect for each study.  Output is a meta object.  This can then be used to create the forest plots.  Each effect size is computed with both a fixed effect and random effects models.  The DerSimonian-Laird ("DL") estimator is used to estimate $\tau^2$, the variance of the true effect sizes. Knapp-Hartung adjustment to control for the uncertainty in our estimate of the between-study heterogeneity are not used.  Using the Knapp-Hartung adjustments would result in wider confidence intervals.  
+
+# Weight Values
+WeightValues_rct_min = effect_rct %>% 
+  filter(Metric=="Weight Values") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#Total-cholesterol
+Total_cholesterol_rct_min = effect_rct %>% 
+  filter(Metric=="Total-cholesterol") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#LDL-Cholesterol
+LDL_Cholesterol_rct_min = effect_rct %>% 
+  filter(Metric=="LDL-Cholesterol") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#HDL-Cholesterol
+HDL_Cholesterol_rct_min = effect_rct %>% 
+  filter(Metric=="HDL-Cholesterol") %>%
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#Triglyceride
+Triglyceride_rct_min = effect_rct %>% 
+  filter(Metric=="Triglyceride") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#BMI Values
+BMIValues_rct_min = effect_rct %>% 
+  filter(Metric=="BMI Values") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#% Body Fat Values
+PercentBodyFatValues_rct_min = effect_rct %>% 
+  filter(Metric=="% Body Fat Values") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+```
+
+
+```{r forest plots min rct, include=FALSE, out.height="100%", out.width="100%"}
+## Forest Plots (RCT) minimum effect from each study
+
+#This section creates forest plots for each metric for the rct studies.
+
+#Weight Values
+png(file = "./Forest_Plots/forest_weight_rct_min.png", width = 3800, height = 2400, res = 300)
+
+forest(WeightValues_rct_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Weight)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#Total Cholesterol
+png(file = "./Forest_Plots/forest_total_cholesterol_rct_min.png", width = 3800, height = 2400, res = 300)
+
+forest(Total_cholesterol_rct_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Total Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#LDL Cholesterol
+png(file = "./Forest_Plots/forest_LDL_cholesterol_rct_min.png", width = 3800, height = 2400, res = 300)
+
+forest(LDL_Cholesterol_rct_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (LDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#HDL Cholesterol
+png(file = "./Forest_Plots/forest_HDL_cholesterol_rct_min.png", width = 3800, height = 2400, res = 300)
+
+forest(HDL_Cholesterol_rct_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (HDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#Triglyceride
+png(file = "./Forest_Plots/forest_Triglycerides_rct_min.png", width = 3800, height = 2400, res = 300)
+
+forest(Triglyceride_rct_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Triglycerides)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#BMI
+png(file = "./Forest_Plots/forest_BMI_rct_min.png", width = 3800, height = 2400, res = 300)
+
+forest(BMIValues_rct_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (BMI)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#% Body Fat
+png(file = "./Forest_Plots/forest_percent_body_fat_rct_min.png", width = 3800, height = 2400, res = 300)
+
+forest(PercentBodyFatValues_rct_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (% Body Fat)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+```
+
+  
+```{r pooled effect size max rct}
+# Calculating and visualizing Pooled Effect Sizes (RCT) Maximum effect size for each study
+
+## Pooled Effects Calculation
+
+#The following section calculates the pooled effect size of each health metric for the RCTS.  To control for  correlated effects in studies with multiple treatments only the Maximum effect for each study.  Output is a meta object.  This can then be used to create the forest plots.  Each effect size is computed with both a fixed effect and random effects models.  The DerSimonian-Laird ("DL") estimator is used to estimate $\tau^2$, the variance of the true effect sizes. Knapp-Hartung adjustment to control for the uncertainty in our estimate of the between-study heterogeneity are not used.  Using the Knapp-Hartung adjustments would result in wider confidence intervals. 
+
+# Weight Values
+WeightValues_rct_max = effect_rct %>% 
+  filter(Metric=="Weight Values") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#Total-cholesterol
+Total_cholesterol_rct_max = effect_rct %>% 
+  filter(Metric=="Total-cholesterol") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#LDL-Cholesterol
+LDL_Cholesterol_rct_max = effect_rct %>% 
+  filter(Metric=="LDL-Cholesterol") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#HDL-Cholesterol
+HDL_Cholesterol_rct_max = effect_rct %>% 
+  filter(Metric=="HDL-Cholesterol") %>%
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#Triglyceride
+Triglyceride_rct_max = effect_rct %>% 
+  filter(Metric=="Triglyceride") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#BMI Values
+BMIValues_rct_max = effect_rct %>% 
+  filter(Metric=="BMI Values") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#% Body Fat Values
+PercentBodyFatValues_rct_max = effect_rct %>% 
+  filter(Metric=="% Body Fat Values") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+```
+
+
+```{r forest plots max rct, include=FALSE, out.height="100%", out.width="100%"}
+## Forest Plots (RCT) maximum effect from each study
+
+#This section creates forest plots for each metric for the rct studies.
+
+#Weight Values
+png(file = "./Forest_Plots/forest_weight_rct_max.png", width = 3800, height = 2400, res = 300)
+
+forest(WeightValues_rct_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Weight)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#Total Cholesterol
+png(file = "./Forest_Plots/forest_total_cholesterol_rct_max.png", width = 3800, height = 2400, res = 300)
+
+forest(Total_cholesterol_rct_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Total Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#LDL Cholesterol
+png(file = "./Forest_Plots/forest_LDL_cholesterol_rct_max.png", width = 3800, height = 2400, res = 300)
+
+forest(LDL_Cholesterol_rct_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (LDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#HDL Cholesterol
+png(file = "./Forest_Plots/forest_HDL_cholesterol_rct_max.png", width = 3800, height = 2400, res = 300)
+
+forest(HDL_Cholesterol_rct_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (HDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#Triglyceride
+png(file = "./Forest_Plots/forest_Triglycerides_rct_max.png", width = 3800, height = 2400, res = 300)
+
+forest(Triglyceride_rct_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Triglycerides)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#BMI
+png(file = "./Forest_Plots/forest_BMI_rct_max.png", width = 3800, height = 2400, res = 300)
+
+forest(BMIValues_rct_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (BMI)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#% Body Fat
+png(file = "./Forest_Plots/forest_percent_body_fat_rct_max.png", width = 3800, height = 2400, res = 300)
+
+forest(PercentBodyFatValues_rct_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (% Body Fat)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+```
+
+```{r pooled effect size min crossover}
+# Calculating and visualizing Pooled Effect Sizes (Crossover Trials) Minimum effect size for each study
+
+## Pooled Effects Calculation
+
+#The following section calculates the pooled effect size of each health metric for the Crossover Trials  To control for  correlated effects in studies with multiple treatments only the minimum effect for each study.  Output is a meta object.  This can then be used to create the forest plots.  Each effect size is computed with both a fixed effect and random effects models.  The DerSimonian-Laird ("DL") estimator is used to estimate $\tau^2$, the variance of the true effect sizes. Knapp-Hartung adjustment to control for the uncertainty in our estimate of the between-study heterogeneity are not used.  Using the Knapp-Hartung adjustments would result in wider confidence intervals.  
+
+# Weight Values, BMI and Body fat Percentage are only reported by Murphy (2014) with 2 comparisons.  Removing one leaves us with only 1 effect size and a pooled effect size can not be calculated.  
+
+#Total-cholesterol
+Total_cholesterol_crossover_min = effect_cross_over %>% 
+  filter(Metric=="Total-cholesterol") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#LDL-Cholesterol
+#Two of the effect sizes for Roussell (2012) were the same. We remove one of them manually below with slice().
+LDL_Cholesterol_crossover_min = effect_cross_over %>% 
+  filter(Metric=="LDL-Cholesterol") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  slice(1) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#HDL-Cholesterol
+#Two of the effect sizes for Roussell (2012) were the same. We remove one of them manually below with slice().
+HDL_Cholesterol_crossover_min = effect_cross_over %>% 
+  filter(Metric=="HDL-Cholesterol") %>%
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  slice(1) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#Triglyceride
+Triglyceride_crossover_min = effect_cross_over %>% 
+  filter(Metric=="Triglyceride") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+```
+
+
+```{r forest plots min crossover, include=FALSE, out.height="100%", out.width="100%"}
+## Forest Plots (crossover) minimum effect from each study
+
+#This section creates forest plots for each metric for the crossover studies.
+
+#Total Cholesterol
+png(file = "./Forest_Plots/forest_total_cholesterol_crossover_min.png", width = 3800, height = 2400, res = 300)
+
+forest(Total_cholesterol_crossover_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Total Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#LDL Cholesterol
+png(file = "./Forest_Plots/forest_LDL_cholesterol_crossover_min.png", width = 3800, height = 2400, res = 300)
+
+forest(LDL_Cholesterol_crossover_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (LDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#HDL Cholesterol
+png(file = "./Forest_Plots/forest_HDL_cholesterol_crossover_min.png", width = 3800, height = 2400, res = 300)
+
+forest(HDL_Cholesterol_crossover_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (HDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#Triglyceride
+png(file = "./Forest_Plots/forest_Triglycerides_crossover_min.png", width = 3800, height = 2400, res = 300)
+
+forest(Triglyceride_crossover_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Triglycerides)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+```
+
+```{r pooled effect size max crossover}
+# Calculating and visualizing Pooled Effect Sizes (crossover) Maximum effect size for each study
+
+## Pooled Effects Calculation
+
+#The following section calculates the pooled effect size of each health metric for the crossover studies.  To control for  correlated effects in studies with multiple treatments only the Maximum effect for each study.  Output is a meta object.  This can then be used to create the forest plots.  Each effect size is computed with both a fixed effect and random effects models.  The DerSimonian-Laird ("DL") estimator is used to estimate $\tau^2$, the variance of the true effect sizes. Knapp-Hartung adjustment to control for the uncertainty in our estimate of the between-study heterogeneity are not used.  Using the Knapp-Hartung adjustments would result in wider confidence intervals.  
+
+
+# Weight Values, BMI and Body fat Percentage are only reported by Murphy (2014) with 2 comparisons.  Removing one leaves us with only 1 effect size and a pooled effect size can not be calculated. 
+
+#Total-cholesterol
+Total_cholesterol_crossover_max = effect_cross_over %>% 
+  filter(Metric=="Total-cholesterol") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#LDL-Cholesterol
+#Two of the effect sizes for Roussell (2012) were the same. We remove one of them manually below with slice().
+LDL_Cholesterol_crossover_max = effect_cross_over %>% 
+  filter(Metric=="LDL-Cholesterol") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  slice(1) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#HDL-Cholesterol
+#Two of the effect sizes for Roussell (2012) were the same. We remove one of them manually below with slice().
+HDL_Cholesterol_crossover_max = effect_cross_over %>% 
+  filter(Metric=="HDL-Cholesterol") %>%
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  slice(1) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#Triglyceride
+Triglyceride_crossover_max = effect_cross_over %>% 
+  filter(Metric=="Triglyceride") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+```
+
+```{r forest plots max crossover, include=FALSE, out.height="100%", out.width="100%"}
+## Forest Plots (crossover) maximum effect from each study
+
+#This section creates forest plots for each metric for the crossover studies.
+
+#Total Cholesterol
+png(file = "./Forest_Plots/forest_total_cholesterol_crossover_max.png", width = 3800, height = 2400, res = 300)
+
+forest(Total_cholesterol_crossover_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Total Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#LDL Cholesterol
+png(file = "./Forest_Plots/forest_LDL_cholesterol_crossover_max.png", width = 3800, height = 2400, res = 300)
+
+forest(LDL_Cholesterol_crossover_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (LDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#HDL Cholesterol
+png(file = "./Forest_Plots/forest_HDL_cholesterol_crossover_max.png", width = 3800, height = 2400, res = 300)
+
+forest(HDL_Cholesterol_crossover_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (HDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#Triglyceride
+png(file = "./Forest_Plots/forest_Triglycerides_crossover_max.png", width = 3800, height = 2400, res = 300)
+
+forest(Triglyceride_crossover_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Triglycerides)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+```
+
+```{r pooled effect size min all studies}
+# Calculating and visualizing Pooled Effect Sizes (all studies) Minimum effect size for each study
+
+## Pooled Effects Calculation
+
+#The following section calculates the pooled effect size of each health metric for all studies.  To control for  correlated effects in studies with multiple treatments only the minimum effect for each study.  Output is a meta object.  This can then be used to create the forest plots.  Each effect size is computed with both a fixed effect and random effects models.  The DerSimonian-Laird ("DL") estimator is used to estimate $\tau^2$, the variance of the true effect sizes. Knapp-Hartung adjustment to control for the uncertainty in our estimate of the between-study heterogeneity are not used.  Using the Knapp-Hartung adjustments would result in wider confidence intervals.  
+
+# Weight Values
+#Two of the effect sizes for Murphy (2014) were the same. We remove one of them manually below with slice().
+WeightValues_all_min = effect_all %>% 
+  filter(Metric=="Weight Values") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  slice(1) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#Total-cholesterol
+Total_cholesterol_all_min = effect_all %>% 
+  filter(Metric=="Total-cholesterol") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#LDL-Cholesterol
+#Two of the effect sizes for Roussell (2012) were the same. We remove one of them manually below with slice().
+LDL_Cholesterol_all_min = effect_all %>% 
+  filter(Metric=="LDL-Cholesterol") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  slice(1) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#HDL-Cholesterol
+#Two of the effect sizes for Roussell (2012) were the same. We remove one of them manually below with slice().
+HDL_Cholesterol_all_min = effect_all %>% 
+  filter(Metric=="HDL-Cholesterol") %>%
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  slice(1) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#Triglyceride
+Triglyceride_all_min = effect_all %>% 
+  filter(Metric=="Triglyceride") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#BMI Values
+#Two of the effect sizes for Murphy (2014) were the same. We remove one of them manually below with slice().
+BMIValues_all_min = effect_all %>% 
+  filter(Metric=="BMI Values") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  slice(1) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#% Body Fat Values
+PercentBodyFatValues_all_min = effect_all %>% 
+  filter(Metric=="% Body Fat Values") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==min(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+```
+
+
+```{r forest plots min all studies, include=FALSE, out.height="100%", out.width="100%"}
+## Forest Plots (all studies) minimum effect from each study
+
+#This section creates forest plots for each metric for all studies.
+
+#Weight Values
+png(file = "./Forest_Plots/forest_weight_all_min.png", width = 3800, height = 2400, res = 300)
+
+forest(WeightValues_all_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Weight)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#Total Cholesterol
+png(file = "./Forest_Plots/forest_total_cholesterol_all_min.png", width = 3800, height = 2400, res = 300)
+
+forest(Total_cholesterol_all_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Total Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#LDL Cholesterol
+png(file = "./Forest_Plots/forest_LDL_cholesterol_all_min.png", width = 3800, height = 2400, res = 300)
+
+forest(LDL_Cholesterol_all_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (LDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#HDL Cholesterol
+png(file = "./Forest_Plots/forest_HDL_cholesterol_all_min.png", width = 3800, height = 2400, res = 300)
+
+forest(HDL_Cholesterol_all_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (HDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#Triglyceride
+png(file = "./Forest_Plots/forest_Triglycerides_all_min.png", width = 3800, height = 2400, res = 300)
+
+forest(Triglyceride_all_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Triglycerides)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#BMI
+png(file = "./Forest_Plots/forest_BMI_all_min.png", width = 3800, height = 2400, res = 300)
+
+forest(BMIValues_all_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (BMI)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#% Body Fat
+png(file = "./Forest_Plots/forest_percent_body_fat_all_min.png", width = 3800, height = 2400, res = 300)
+
+forest(PercentBodyFatValues_all_min, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (% Body Fat)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+```
+
+
+```{r pooled effect size max all studies}
+# Calculating and visualizing Pooled Effect Sizes (all studies) Maximum effect size for each study
+
+## Pooled Effects Calculation
+
+#The following section calculates the pooled effect size of each health metric for all studies.  To control for  correlated effects in studies with multiple treatments only the Maximum effect for each study.  Output is a meta object.  This can then be used to create the forest plots.  Each effect size is computed with both a fixed effect and random effects models.  The DerSimonian-Laird ("DL") estimator is used to estimate $\tau^2$, the variance of the true effect sizes. Knapp-Hartung adjustment to control for the uncertainty in our estimate of the between-study heterogeneity are not used.  Using the Knapp-Hartung adjustments would result in wider confidence intervals. 
+
+# Weight Values 
+#Two of the effect sizes for Murphy (2014) were the same. We remove one of them manually below with slice().
+WeightValues_all_max = effect_all %>% 
+  filter(Metric=="Weight Values") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  slice(1) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#Total-cholesterol
+Total_cholesterol_all_max = effect_all %>% 
+  filter(Metric=="Total-cholesterol") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#LDL-Cholesterol
+#Two of the effect sizes for Roussell (2012) were the same. We remove one of them manually below with slice().
+LDL_Cholesterol_all_max = effect_all %>% 
+  filter(Metric=="LDL-Cholesterol") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  slice(1) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#HDL-Cholesterol
+#Two of the effect sizes for Roussell (2012) were the same. We remove one of them manually below with slice().
+HDL_Cholesterol_all_max = effect_all %>% 
+  filter(Metric=="HDL-Cholesterol") %>%
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  slice(1) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#Triglyceride
+Triglyceride_all_max = effect_all %>% 
+  filter(Metric=="Triglyceride") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#BMI Values
+#Two of the effect sizes for Murphy (2014) were the same. We remove one of them manually below with slice().
+BMIValues_all_max = effect_all %>% 
+  filter(Metric=="BMI Values") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  slice(1) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+
+#% Body Fat Values
+PercentBodyFatValues_all_max = effect_all %>% 
+  filter(Metric=="% Body Fat Values") %>% 
+  group_by(`Author (Year)`) %>% 
+  filter(effect_size==max(effect_size)) %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "DL"
+  )
+```
+
+
+```{r forest plots max all studies, include=FALSE, out.height="100%", out.width="100%"}
+## Forest Plots (all studies) maximum effect from each study
+
+#This section creates forest plots for each metric for all studies.
+
+#Weight Values
+png(file = "./Forest_Plots/forest_weight_all_max.png", width = 3800, height = 2400, res = 300)
+
+forest(WeightValues_all_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Weight)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#Total Cholesterol
+png(file = "./Forest_Plots/forest_total_cholesterol_all_max.png", width = 3800, height = 2400, res = 300)
+
+forest(Total_cholesterol_all_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Total Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#LDL Cholesterol
+png(file = "./Forest_Plots/forest_LDL_cholesterol_all_max.png", width = 3800, height = 2400, res = 300)
+
+forest(LDL_Cholesterol_all_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (LDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#HDL Cholesterol
+png(file = "./Forest_Plots/forest_HDL_cholesterol_all_max.png", width = 3800, height = 2400, res = 300)
+
+forest(HDL_Cholesterol_all_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (HDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#Triglyceride
+png(file = "./Forest_Plots/forest_Triglycerides_all_max.png", width = 3800, height = 2400, res = 300)
+
+forest(Triglyceride_all_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Triglycerides)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#BMI
+png(file = "./Forest_Plots/forest_BMI_all_max.png", width = 3800, height = 2400, res = 300)
+
+forest(BMIValues_all_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (BMI)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+
+#% Body Fat
+png(file = "./Forest_Plots/forest_percent_body_fat_all_max.png", width = 3800, height = 2400, res = 300)
+
+forest(PercentBodyFatValues_all_max, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (% Body Fat)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci", "w.fixed", "w.random"),
+            rightlabs = c("95%-CI", "Weight \n(fixed)", 
+                          "Weight \n(random)"))
+
+dev.off()
+```
+
+
+```{r looking for outliers RCT, include=FALSE}
+#Unfiltered
+find.outliers(WeightValues_rct)
+find.outliers(BMIValues_rct)
+find.outliers(PercentBodyFatValues_rct)
+out4 = find.outliers(Total_cholesterol_rct)
+out5 = find.outliers(LDL_Cholesterol_rct)
+out6 = find.outliers(HDL_Cholesterol_rct)
+find.outliers(Triglyceride_rct)
+
+#most negative
+find.outliers(WeightValues_rct_min)
+find.outliers(BMIValues_rct_min)
+find.outliers(PercentBodyFatValues_rct_min)
+find.outliers(Total_cholesterol_rct_min)
+find.outliers(LDL_Cholesterol_rct_min)
+find.outliers(HDL_Cholesterol_rct_min)
+find.outliers(Triglyceride_rct_min)
+
+#Most Positive
+find.outliers(WeightValues_rct_max)
+find.outliers(BMIValues_rct_max)
+find.outliers(PercentBodyFatValues_rct_max)
+out18 = find.outliers(Total_cholesterol_rct_max)
+find.outliers(LDL_Cholesterol_rct_max) # outlier only in fixed effects model
+find.outliers(HDL_Cholesterol_rct_max) # outlier only in fixed effects model
+find.outliers(Triglyceride_rct_max)
+```
+
+```{r Creating a table of outliers and updated pooled CI}
+Metric_rct = c("Weight", "BMI", "Percent Body Fat", "Total Cholesterol", "LDL Cholesterol", "HDL Cholesterol", "Triglycerides")
+Metric_out_rct = rep(Metric_rct, 3)
+Analysis_rct = c(rep("Unfiltered", 7), rep("Most Negative", 7), rep("Most Positive", 7))
+
+Outlier_rct = c("None","None","None",out4$out.study.random, out5$out.study.random,
+            out6$out.study.random,"None","None","None","None","None","None","None",
+            "None","None","None","None",out18$out.study.random,"None","None","None")
+
+Pooled_ES_rct = c(NA,NA,NA,out4$m.random$TE.random, out5$m.random$TE.random,
+             out6$m.random$TE.random,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,
+             out18$m.random$TE.random,NA,NA,NA)
+
+Original_Pooled_ES_rct = c(NA,NA,NA,Total_cholesterol_rct$TE.random, 
+                           LDL_Cholesterol_rct$TE.random,
+                           HDL_Cholesterol_rct$TE.random,
+                           NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,
+                           Total_cholesterol_rct_max$TE.random,NA,NA,NA)
+
+Original_Lower_CI_rct = c(NA,NA,NA,Total_cholesterol_rct$lower.random,
+                           LDL_Cholesterol_rct$lower.random,
+                           HDL_Cholesterol_rct$lower.random,
+                           NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,
+                           Total_cholesterol_rct_max$lower.random,NA,NA,NA)
+
+Original_Upper_CI_rct = c(NA,NA,NA,Total_cholesterol_rct$upper.random,
+                           LDL_Cholesterol_rct$upper.random,
+                           HDL_Cholesterol_rct$upper.random,
+                           NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,
+                           Total_cholesterol_rct_max$upper.random,NA,NA,NA)
+
+Lower_CI_rct = c(NA,NA,NA,out4$m.random$lower.random, out5$m.random$lower.random,
+             out6$m.random$lower.random,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,
+             out18$m.random$lower.random,NA,NA,NA)
+
+Upper_CI_rct = c(NA,NA,NA,out4$m.random$upper.random, out5$m.random$upper.random,
+             out6$m.random$upper.random,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,
+             out18$m.random$upper.random, NA,
+             NA, NA)
+
+out_rct = bind_cols("Metric" = Metric_out_rct, 
+                    "Analysis" = Analysis_rct, 
+                    "Outlier Study" = Outlier_rct,
+                    "Original Pooled Effect Size" = round(Pooled_ES_rct, 4),
+                    "Original Lower Bound" = round(Original_Lower_CI_rct, 4),
+                    "Original Upper Bound" = round(Original_Upper_CI_rct,4),
+                    "Updated Pooled Effect Size" = round(Pooled_ES_rct, 4),
+                    "Updated Lower Bound" = round(Lower_CI_rct, 4),
+                    "Updated Upper Bound" = round(Upper_CI_rct,4))
+
+out_rct_table = out_rct %>% gt() %>%   
+  cols_align(
+    align = "center") %>% 
+  tab_header(
+    title = md("Outlier Analysis for Randomized Control Trials")
+  ) %>% 
+    tab_spanner(
+    label = "Original Pooled Effect Size and 95% CI",
+    columns = c(4,5,6) 
+  ) %>% 
+  tab_spanner(
+    label = "Updated Pooled Effect Size and 95% CI \n(After Removing Outlier)",
+    columns = c(7,8,9)
+  ) %>%
+  cols_label(
+    `Original Pooled Effect Size` = "Pooled Effect Size",
+    `Original Lower Bound` = "Lower Bound",
+    `Original Upper Bound` = "Upper Bound",
+    `Updated Pooled Effect Size` = "Pooled Effect Size",
+    `Updated Lower Bound` = "Lower Bound",
+    `Updated Upper Bound` = "Upper Bound",
+  ) %>% 
+    tab_options(
+    data_row.padding = px(3),
+    container.height = "100%"
+   )
+```
+
+```{r looking for outliers Crossover, include=FALSE}
+#There are no outliers in the crossover trials
+find.outliers(WeightValues_crossover)
+find.outliers(BMIValues_crossover)
+find.outliers(PercentBodyFatValues_crossover)
+find.outliers(Total_cholesterol_crossover)
+find.outliers(LDL_Cholesterol_crossover)
+find.outliers(HDL_Cholesterol_crossover)
+find.outliers(Triglyceride_crossover)
+
+#outliers for weight, bmi and body fat percentage are not able to be assessed in the filtered pooled effects as only one study reported these values
+find.outliers(Total_cholesterol_crossover_min)
+find.outliers(LDL_Cholesterol_crossover_min)
+find.outliers(HDL_Cholesterol_crossover_min)
+find.outliers(Triglyceride_crossover_min)
+
+find.outliers(Total_cholesterol_crossover_max)
+find.outliers(LDL_Cholesterol_crossover_max)
+find.outliers(HDL_Cholesterol_crossover_max)
+find.outliers(Triglyceride_crossover_max)
+```
+
+```{r influence analysis rct, include=FALSE}
+# RCT
+## Looking for influence 
+Weight_rct_inf = InfluenceAnalysis(WeightValues_rct, random = TRUE)
+Total_cholesterol_rct_inf = InfluenceAnalysis(Total_cholesterol_rct, random = TRUE)
+LDL_cholesterol_rct_inf = InfluenceAnalysis(LDL_Cholesterol_rct, random = TRUE)
+HDL_cholesterol_rct_inf = InfluenceAnalysis(HDL_Cholesterol_rct, random = TRUE)
+Triglyceride_rct_inf = InfluenceAnalysis(Triglyceride_rct, random = TRUE)
+BMI_rct_inf = InfluenceAnalysis(BMIValues_rct, random = TRUE)
+PercentBodyFat_rct_inf = InfluenceAnalysis(PercentBodyFatValues_rct, random = TRUE)
+
+Weight_rct_inf_min = InfluenceAnalysis(WeightValues_rct_min, random = TRUE)
+Total_cholesterol_rct_inf_min = InfluenceAnalysis(Total_cholesterol_rct_min, random = TRUE)
+LDL_cholesterol_rct_inf_min = InfluenceAnalysis(LDL_Cholesterol_rct_min, random = TRUE)
+HDL_cholesterol_rct_inf_min = InfluenceAnalysis(HDL_Cholesterol_rct_min, random = TRUE)
+Triglyceride_rct_inf_min = InfluenceAnalysis(Triglyceride_rct_min, random = TRUE)
+BMI_rct_inf_min = InfluenceAnalysis(BMIValues_rct_min, random = TRUE)
+PercentBodyFat_rct_inf_min = InfluenceAnalysis(PercentBodyFatValues_rct_min, random = TRUE)
+
+Weight_rct_inf_max = InfluenceAnalysis(WeightValues_rct_max, random = TRUE)
+Total_cholesterol_rct_inf_max = InfluenceAnalysis(Total_cholesterol_rct_max, random = TRUE)
+LDL_cholesterol_rct_inf_max = InfluenceAnalysis(LDL_Cholesterol_rct_max, random = TRUE)
+HDL_cholesterol_rct_inf_max = InfluenceAnalysis(HDL_Cholesterol_rct_max, random = TRUE)
+Triglyceride_rct_inf_max = InfluenceAnalysis(Triglyceride_rct_max, random = TRUE)
+BMI_rct_inf_max = InfluenceAnalysis(BMIValues_rct_max, random = TRUE)
+PercentBodyFat_rct_inf_max = InfluenceAnalysis(PercentBodyFatValues_rct_max, random = TRUE)
+```
+
+```{r influence analysis crossover, include=FALSE}
+# crossover
+## Looking for influence 
+Weight_crossover_inf = InfluenceAnalysis(WeightValues_crossover, random = TRUE)
+Total_cholesterol_crossover_inf = InfluenceAnalysis(Total_cholesterol_crossover, random = TRUE)
+LDL_cholesterol_crossover_inf = InfluenceAnalysis(LDL_Cholesterol_crossover, random = TRUE)
+HDL_cholesterol_crossover_inf = InfluenceAnalysis(HDL_Cholesterol_crossover, random = TRUE)
+Triglyceride_crossover_inf = InfluenceAnalysis(Triglyceride_crossover, random = TRUE)
+BMI_crossover_inf = InfluenceAnalysis(BMIValues_crossover, random = TRUE)
+PercentBodyFat_crossover_inf = InfluenceAnalysis(PercentBodyFatValues_crossover, random = TRUE)
+
+#Weight, BMI, and Body Fat % not included in min or max as there is only one study in each in the filtered effect sizes
+Total_cholesterol_crossover_inf_min = InfluenceAnalysis(Total_cholesterol_crossover_min, random = TRUE)
+LDL_cholesterol_crossover_inf_min = InfluenceAnalysis(LDL_Cholesterol_crossover_min, random = TRUE)  
+HDL_cholesterol_crossover_inf_min = InfluenceAnalysis(HDL_Cholesterol_crossover_min, random = TRUE)
+Triglyceride_crossover_inf_min = InfluenceAnalysis(Triglyceride_crossover_min, random = TRUE)
+
+Total_cholesterol_crossover_inf_max = InfluenceAnalysis(Total_cholesterol_crossover_max, random = TRUE)
+LDL_cholesterol_crossover_inf_max = InfluenceAnalysis(LDL_Cholesterol_crossover_max, random = TRUE)
+HDL_cholesterol_crossover_inf_max = InfluenceAnalysis(HDL_Cholesterol_crossover_max, random = TRUE)
+Triglyceride_crossover_inf_max = InfluenceAnalysis(Triglyceride_crossover_max, random = TRUE)
+```
+
+```{r Leave one out meta analysis RCT, include=FALSE}
+##Leave one out meta analysis 
+#Unfiltered pooled effect sizes
+png(file = "./Leave_one_out/loo_weight_rct.png", width = 3800, height = 2400, res = 300)
+plot(Weight_rct_inf, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_Total_cholesterol_rct.png", width = 3800, height = 2400, res = 300)
+plot(Total_cholesterol_rct_inf, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_LDL_cholesterol_rct.png", width = 3800, height = 2400, res = 300)
+plot(LDL_cholesterol_rct_inf, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_HDL_cholesterol_rct.png", width = 3800, height = 2400, res = 300)
+plot(HDL_cholesterol_rct_inf, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_Triglyceride_rct.png", width = 3800, height = 2400, res = 300)
+plot(Triglyceride_rct_inf, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_BMI_rct.png", width = 3800, height = 2400, res = 300)
+plot(BMI_rct_inf, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_PercentBodyFat_rct.png", width = 3800, height = 2400, res = 300)
+plot(PercentBodyFat_rct_inf, "es")
+dev.off()
+
+
+#filtered pooled effect sizes most negative
+png(file = "./Leave_one_out/loo_Weight_rct_min.png", width = 3800, height = 2400, res = 300)
+plot(Weight_rct_inf_min, "es") 
+dev.off()
+
+png(file = "./Leave_one_out/loo_Total_cholesterol_rct_min.png", width = 3800, height = 2400, res = 300)
+plot(Total_cholesterol_rct_inf_min, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_LDL_cholesterol_rct_min.png", width = 3800, height = 2400, res = 300)
+plot(LDL_cholesterol_rct_inf_min, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_HDL_cholesterol_rct_min.png", width = 3800, height = 2400, res = 300)
+plot(HDL_cholesterol_rct_inf_min, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_Triglyceride_rct_min.png", width = 3800, height = 2400, res = 300)
+plot(Triglyceride_rct_inf_min, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_BMI_rct_min.png", width = 3800, height = 2400, res = 300)
+plot(BMI_rct_inf_min, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_PercentBodyFat_rct_min.png", width = 3800, height = 2400, res = 300)
+plot(PercentBodyFat_rct_inf_min, "es")
+dev.off()
+
+
+##filtered pooled effect sizes most positive
+png(file = "./Leave_one_out/loo_Weight_rct_max.png", width = 3800, height = 2400, res = 300)
+plot(Weight_rct_inf_max, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_Total_cholesterol_rct_max.png", width = 3800, height = 2400, res = 300)
+plot(Total_cholesterol_rct_inf_max, "es")
+dev.off()
+ 
+png(file = "./Leave_one_out/loo_LDL_cholesterol_rct_max.png", width = 3800, height = 2400, res = 300)
+plot(LDL_cholesterol_rct_inf_max, "es")
+dev.off()
+ 
+png(file = "./Leave_one_out/loo_HDL_cholesterol_rct_max.png", width = 3800, height = 2400, res = 300)
+plot(HDL_cholesterol_rct_inf_max, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_Triglyceride_rct_max.png", width = 3800, height = 2400, res = 300)
+plot(Triglyceride_rct_inf_max, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_BMI_rct_max.png", width = 3800, height = 2400, res = 300)
+plot(BMI_rct_inf_max, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_PercentBodyFat_rct_max.png", width = 3800, height = 2400, res = 300)
+plot(PercentBodyFat_rct_inf_max, "es")
+dev.off()
+```
+
+```{r Leave one out meta analysis crossover, include=FALSE}
+##Leave one out meta analysis 
+#Unfiltered pooled effect sizes
+png(file = "./Leave_one_out/loo_weight_crossover.png", width = 3800, height = 2400, res = 300)
+plot(Weight_crossover_inf, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_Total_cholesterol_crossover.png", width = 3800, height = 2400, res = 300)
+plot(Total_cholesterol_crossover_inf, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_LDL_cholesterol_crossover.png", width = 3800, height = 2400, res = 300)
+plot(LDL_cholesterol_crossover_inf, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_HDL_cholesterol_crossover.png", width = 3800, height = 2400, res = 300)
+plot(HDL_cholesterol_crossover_inf, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_Triglyceride_crossover.png", width = 3800, height = 2400, res = 300)
+plot(Triglyceride_crossover_inf, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_BMI_crossover.png", width = 3800, height = 2400, res = 300)
+plot(BMI_crossover_inf, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_PercentBodyFat_crossover.png", width = 3800, height = 2400, res = 300)
+plot(PercentBodyFat_crossover_inf, "es")
+dev.off()
+
+#filtered pooled effect sizes most negative
+#Weight, BMI, and Body Fat % not included in min or max as there is only one study in each in the filtered effect sizes
+png(file = "./Leave_one_out/loo_Total_cholesterol_crossover_min.png", width = 3800, height = 2400, res = 300)
+plot(Total_cholesterol_crossover_inf_min, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_LDL_cholesterol_crossover_min.png", width = 3800, height = 2400, res = 300)
+plot(LDL_cholesterol_crossover_inf_min, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_HDL_cholesterol_crossover_min.png", width = 3800, height = 2400, res = 300)
+plot(HDL_cholesterol_crossover_inf_min, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_Triglyceride_crossover_min.png", width = 3800, height = 2400, res = 300)
+plot(Triglyceride_crossover_inf_min, "es")
+dev.off()
+
+#filtered pooled effect sizes most positive
+png(file = "./Leave_one_out/loo_Total_Cholesterol_crossover_max.png", width = 3800, height = 2400, res = 300)
+plot(Total_cholesterol_crossover_inf_max, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_LDL_Cholesterol_crossover_max.png", width = 3800, height = 2400, res = 300)
+plot(LDL_cholesterol_crossover_inf_max, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_HDL_Cholesterol_crossover_max.png", width = 3800, height = 2400, res = 300)
+plot(HDL_cholesterol_crossover_inf_max, "es")
+dev.off()
+
+png(file = "./Leave_one_out/loo_Triglyceride_crossover_max.png", width = 3800, height = 2400, res = 300)
+plot(Triglyceride_crossover_inf_max, "es")
+dev.off()
+```
+
+```{r SEM to SD conversion for funnel plots}
+#Publication Bias is the bias that the findings of an article change the likelihood of that article being published. Publication bias was examined visually using funnel plots, standardized mean difference (SMD) vs. standard error (SE), and Egger’s test for asymmetry of funnel plots. We begin by importing our data and clean it appropriately.
+
+#Note that the studies reported the variation of their data in terms of standard deviation (SD) or standard error (SEM). We made the choice to use standard error throughout the publication bias analysis and needed to covert appropriately.  
+
+all_effect_sizes2 = all_effect_sizes %>% 
+  #changing treatment variability to SD
+  mutate(`Treatment_Post-intervention_Variability` = case_when(Variability=="SEM"~`Treatment_Post-intervention_Variability`*sqrt(n_treatment),
+                                                               TRUE~`Treatment_Post-intervention_Variability`)) %>% 
+  #Changing control variability to SD
+  mutate(`Control_Post-intervention_Variability` = case_when(Variability=="SEM"~`Control_Post-intervention_Variability`*sqrt(n_control),
+                                                               TRUE~`Control_Post-intervention_Variability`)) %>% 
+  #Updating variability label to SD
+  mutate(Variability = case_when(Variability=="SEM"~"SD",
+                                 TRUE~Variability)) %>% 
+  #Changing missing funding info to other.
+  mutate(Funded = case_when(is.na(Funded)==TRUE~"Other",
+                            TRUE~Funded)) %>%
+  #changing % to Percent for naming plots later.
+  mutate(Metric=case_when(Metric=="% Body Fat Values"~"Percent Body Fat",
+                          TRUE~Metric))
+```
+
+```{r Metric list for funnel plots}
+#We examined the publication bias for each metric individually. Note that it is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10  studies are referenced in the meta-analysis.
+
+metric = unique(all_effect_sizes2$Metric)
+```
+
+```{r Funnel Plots using metaviz}
+## Building Funnel Plots 
+
+#creating a subdataset for funnel plots and bias calculation.
+#pulling the columns that we need.
+funnel_df <- all_effect_sizes2 %>% 
+                        select( 'Author (Year)',
+                            'Metric',
+                            n_treatment,
+                            'Treatment_Post-intervention_Mean',
+                            'Treatment_Post-intervention_Variability',
+                            n_control,
+                            'Control_Post-intervention_Mean',
+                            'Control_Post-intervention_Variability',
+                            'Funded',
+                            effect_size,
+                            std_error)
+
+colnames(funnel_df) <-  c('AY', 'Metric', 'n.e', 'mean.e', 'sd.e', 'n.c', 'mean.c', 'sd.c', 'Funded','TE','seTE')
+
+#Trimming data to fit the metaviz package 
+viz_data=funnel_df %>% select('AY' , 'Metric','Funded', 'TE', 'seTE') %>% as.data.frame()
+
+#We filter through each type of metric and create the funnel plot using the [metaviz](https://rdrr.io/cran/metaviz/) package.
+# changing options for labeling plots
+options(ggrepel.max.overlaps = 24)
+```
+
+```{r Updating the viz_funnel function to utilize a fixed effects model}
+viz_funnelcustom= function (x, group = NULL, y_axis = "se", method = "FE", contours = TRUE, 
+                            sig_contours = TRUE, addev_contours = FALSE, contours_col = "Blues", 
+                            contours_type = "FEM", detail_level = 1, egger = FALSE, 
+                            trim_and_fill = FALSE, trim_and_fill_side = "left", text_size = 3, 
+                            point_size = 2, xlab = "Effect", ylab = NULL, group_legend = FALSE, 
+                            group_legend_title = "", x_trans_function = NULL, x_breaks = NULL) 
+{
+  if (missing(x)) {
+    stop("argument x is missing, with no default.")
+  }
+  if ("rma" %in% class(x)) {
+    es <- as.numeric(x$yi)
+    se <- as.numeric(sqrt(x$vi))
+    if (method != x$method) {
+      method <- x$method
+    }
+    if (is.null(group) & ncol(x$X) > 1) {
+      if (!all(x$X == 1 || x$X == 0) || any(apply(as.matrix(x$X[, 
+                                                                -1]), 1, sum) > 1)) {
+        stop("Can not deal with metafor output object with continuous and/or more than one categorical moderator variable(s).")
+      }
+      no.levels <- ncol(x$X) - 1
+      group <- factor(apply(as.matrix(x$X[, -1]) * rep(1:no.levels, 
+                                                       each = length(es)), 1, sum))
+    }
+  }
+  else {
+    if ((is.data.frame(x) || is.matrix(x)) && ncol(x) >= 
+        2) {
+      if (sum(is.na(x[, 1])) != 0 || sum(is.na(x[, 2])) != 
+          0) {
+        warning("The effect sizes or standard errors contain missing values, only complete cases are used.")
+        if (!is.null(group)) {
+          group <- group[stats::complete.cases(x)]
+        }
+        x <- x[stats::complete.cases(x), ]
+      }
+      if (!is.numeric(x[, 1]) || !is.numeric(x[, 2])) {
+        stop("Input argument has to be numeric; see help(viz_funnel) for details.")
+      }
+      if (!all(x[, 2] > 0)) {
+        stop("Non-positive standard errors supplied")
+      }
+      es <- x[, 1]
+      se <- x[, 2]
+    }
+    else {
+      stop("Unknown input argument; see help(viz_funnel) for details.")
+    }
+  }
+  if (!is.null(group) && !is.factor(group)) {
+    group <- as.factor(group)
+  }
+  if (!is.null(group) && (length(group) != length(es))) {
+    warning("length of supplied group vector does not correspond to the number of studies; group argument is ignored")
+    group <- NULL
+  }
+  k <- length(es)
+  summary_es <- metafor::rma.uni(yi = es, sei = se, method = method)$b[[1]]
+  summary_se <- sqrt(metafor::rma.uni(yi = es, sei = se, method = method)$vb[[1]])
+  if (contours_type == "FEM") {
+    summary_tau2 <- 0
+  }
+  else {
+    if (contours_type == "REM") {
+      summary_tau2 <- metafor::rma.uni(yi = es, sei = se, 
+                                       method = method)$tau2
+    }
+    else {
+      warning("Supported arguments for contours_type are FEM or REM. FEM (the default) is used.")
+    }
+  }
+  if (is.null(group)) {
+    plotdata <- data.frame(es, se)
+  }
+  else {
+    plotdata <- data.frame(es, se, group)
+  }
+  if (!(contours_col %in% c("Blues", "Greys", "Oranges", "Greens", 
+                            "Reds", "Purples"))) {
+    warning("Supported arguments for contours_col are Blues, Greys, Oranges, Greens, Reds, and Purples. Blues is used.")
+    contours_col <- "Blues"
+  }
+  col <- RColorBrewer::brewer.pal(n = 9, name = contours_col)
+  if (detail_level < 0.1) {
+    detail_level <- 0.1
+    warning("Argument detail_level too low. Set to minimum value (0.1)")
+  }
+  if (detail_level > 10) {
+    detail_level <- 10
+    warning("Argument detail_level too high. Set to minimum value (10)")
+  }
+  min_x <- min(plotdata$es)
+  max_x <- max(plotdata$es)
+  if (trim_and_fill == TRUE) {
+    trimnfill <- function(es, se, group = NULL, side = "left") {
+      if (side == "right") {
+        es <- -es
+      }
+      if (side != "right" && side != "left") {
+        stop("trim_and_fill_side argument must be either left or right")
+      }
+      mean_func <- function(es, se) {
+        metafor::rma.uni(yi = es, sei = se, method = 'FE')$b[1]
+      }
+      k0_func <- function(es, se, summary_es) {
+        n <- length(es)
+        Tn <- sum(rank(abs(es - summary_es))[sign(es - 
+                                                    summary_es) > 0])
+        round(max((4 * Tn - n * (n + 1))/(2 * n - 1), 
+                  0), 0)
+      }
+      summary_es_init <- mean_func(es, se)
+      k0 <- k0_func(es = es, se = se, summary_es = summary_es_init)
+      eps <- 1
+      iter <- 0
+      while (eps > 0.01 || iter < 20) {
+        iter <- iter + 1
+        es_ord <- es[order(es, decreasing = T)]
+        se_ord <- se[order(es, decreasing = T)]
+        if (k0 > 0) {
+          es_ord <- es_ord[-(1:k0)]
+          se_ord <- se_ord[-(1:k0)]
+        }
+        summary_es_new <- mean_func(es_ord, se_ord)
+        k0 <- k0_func(es = es, se = se, summary_es = summary_es_new)
+        eps <- abs(summary_es_init - summary_es_new)
+        summary_es_init <- summary_es_new
+      }
+      if (iter == 19) {
+        warning("Trim and fill algorithm did not converge after 10 iterations")
+      }
+      if (k0 > 0) {
+        es_ord <- es[order(es, decreasing = T)]
+        se_ord <- se[order(es, decreasing = T)]
+        if (!is.null(group)) {
+          group_ord <- group[order(es, decreasing = T)]
+          group_fill <- group_ord[1:k0]
+        }
+        if (side == "right") {
+          es_fill <- -(summary_es_new + (summary_es_new - 
+                                           es_ord[1:k0]))
+          summary_es_init <- -summary_es_init
+        }
+        else {
+          es_fill <- summary_es_new + (summary_es_new - 
+                                         es_ord[1:k0])
+        }
+        se_fill <- se_ord[1:k0]
+        if (is.null(group)) {
+          data.frame(es_fill, se_fill, summary_es_init)
+        }
+        else {
+          data.frame(es_fill, se_fill, group_fill, summary_es_init)
+        }
+      }
+      else {
+        if (is.null(group)) {
+          data.frame(es_fill = NULL, se_fill = NULL, 
+                     summary_es_init = NULL)
+        }
+        else {
+          data.frame(es_fill = NULL, se_fill = NULL, 
+                     group_fill = NULL, summary_es_init = NULL)
+        }
+      }
+    }
+    side <- trim_and_fill_side
+    if (is.null(group)) {
+      tnfdata <- trimnfill(es, se, side = side)
+    }
+    else {
+      tnfdata <- trimnfill(es, se, group, side = side)
+    }
+    if (nrow(tnfdata) > 0) {
+      if (is.null(group)) {
+        names(tnfdata) <- c("es", "se", "tnf_summary")
+      }
+      else {
+        names(tnfdata) <- c("es", "se", "group", "tnf_summary")
+      }
+      min_x <- min(c(min_x, min(tnfdata$es)))
+      max_x <- max(c(max_x, max(tnfdata$es)))
+    }
+    else {
+      trim_and_fill <- FALSE
+    }
+  }
+  if (method == "DL" && addev_contours == TRUE) {
+    rem_dl <- function(es, se) {
+      summary_es_FEM <- sum((1/se^2) * es)/sum(1/se^2)
+      n <- length(es)
+      if (n == 1) {
+        t2 <- 0
+      }
+      else {
+        Q <- sum((1/se^2) * (es - summary_es_FEM)^2)
+        t2 <- max(c(0, (Q - (n - 1))/(sum(1/se^2) - 
+                                        sum((1/se^2)^2)/sum(1/se^2))))
+      }
+      w <- 1/(se^2 + t2)
+      c(sum(w * es)/sum(w), sqrt(1/sum(w)))
+    }
+  }
+  if (y_axis == "se") {
+    plotdata$y <- se
+    max_se <- max(se) + ifelse(diff(range(se)) != 0, diff(range(se)) * 
+                                 0.1, max(se) * 0.1)
+    y_limit <- c(0, max_se)
+    if (is.null(ylab)) {
+      ylab <- "Standard Error"
+    }
+    if (trim_and_fill == TRUE) {
+      tnfdata$y <- tnfdata$se
+    }
+    if (sig_contours == TRUE) {
+      sig_funneldata <- data.frame(x = c(-stats::qnorm(0.975) * 
+                                           max_se, 0, stats::qnorm(0.975) * max_se, stats::qnorm(0.995) * 
+                                           max_se, 0, -stats::qnorm(0.995) * max_se), y = c(max_se, 
+                                                                                            0, max_se, max_se, 0, max_se))
+      min_x <- min(c(min_x, min(sig_funneldata$x)))
+      max_x <- max(c(max_x, max(sig_funneldata$x)))
+    }
+    if (contours == TRUE) {
+      funneldata <- data.frame(x = c(summary_es - stats::qnorm(0.975) * 
+                                       sqrt(max_se^2 + summary_tau2), summary_es - 
+                                       stats::qnorm(0.975) * sqrt(summary_tau2), summary_es + 
+                                       stats::qnorm(0.975) * sqrt(summary_tau2), summary_es + 
+                                       stats::qnorm(0.975) * sqrt(max_se^2 + summary_tau2)), 
+                               y = c(max_se, 0, 0, max_se))
+      min_x <- min(c(min_x, min(funneldata$x)))
+      max_x <- max(c(max_x, max(funneldata$x)))
+    }
+    if (egger == TRUE) {
+      plotdata <- data.frame(plotdata, z = (plotdata$es)/plotdata$se)
+      plotdata <- data.frame(plotdata, prec = 1/plotdata$se)
+      radial_intercept <- stats::coef(stats::lm(z ~ prec, 
+                                                data = plotdata))[1]
+      radial_slope <- stats::coef(stats::lm(z ~ prec, 
+                                            data = plotdata))[2]
+      eggerdata <- data.frame(intercept = radial_slope/radial_intercept, 
+                              slope = -1/radial_intercept)
+    }
+  }
+  else {
+    if (y_axis == "precision") {
+      plotdata$y <- 1/se
+      max_y <- max(1/se) + ifelse(diff(range(se)) != 0, 
+                                  diff(range(1/se)) * 0.05, 1/se * 0.05)
+      min_y <- min(1/se) - ifelse(diff(range(se)) != 0, 
+                                  diff(range(1/se)) * 0.05, 1/se * 0.05)
+      if (is.null(ylab)) {
+        ylab <- "Precision (1/SE)"
+      }
+      if (trim_and_fill == TRUE) {
+        tnfdata$y <- 1/tnfdata$se
+      }
+      if (sig_contours == TRUE) {
+        n_support <- 200 * detail_level
+        prec <- seq(from = min_y, to = max_y, length.out = n_support)
+        x_prec_0.05 <- stats::qnorm(0.975) * (1/prec)
+        x_prec_0.01 <- stats::qnorm(0.995) * (1/prec)
+        sig_funneldata <- data.frame(x = c(-x_prec_0.01, 
+                                           rev(x_prec_0.01), x_prec_0.05, rev(-x_prec_0.05)), 
+                                     y = c(prec, rev(prec), prec, rev(prec)))
+        min_x <- min(c(min_x, min(sig_funneldata$x)))
+        max_x <- max(c(max_x, max(sig_funneldata$x)))
+      }
+      if (contours == TRUE) {
+        n_support <- 200 * detail_level
+        prec <- seq(from = min_y, to = max_y, length.out = n_support)
+        x_prec <- stats::qnorm(0.975) * sqrt((1/prec)^2 + 
+                                               summary_tau2)
+        funneldata <- data.frame(x = rep(summary_es, 
+                                         times = n_support * 2) + c(-x_prec, rev(x_prec)), 
+                                 y = c(prec, rev(prec)))
+        min_x <- min(c(min_x, min(funneldata$x)))
+        max_x <- max(c(max_x, max(funneldata$x)))
+      }
+      if (egger == TRUE) {
+        warning("Note: egger = TRUE ignored: Egger's regression line can only be plotted for y_axis = se")
+      }
+      y_limit <- c(min_y, max_y)
+    }
+    else {
+      stop("y_axis argument must be either se or precision")
+    }
+  }
+  x_limit <- c(min_x - diff(c(min_x, max_x)) * 0.05, max_x + 
+                 diff(c(min_x, max_x)) * 0.05)
+  if (addev_contours == TRUE) {
+    if (y_axis == "se") {
+      y_range <- c(0.001, max_se + diff(range(y_limit)) * 
+                     0.2)
+      x_range <- c(min_x - diff(range(x_limit)) * 0.2, 
+                   max_x + diff(range(x_limit)) * 0.2)
+      step <- abs(summary_es - x_range[1])/(150 * detail_level - 
+                                              1)
+      x_add <- c(seq(from = x_range[1], to = summary_es, 
+                     length.out = 150 * detail_level), seq(from = summary_es + 
+                                                             step, to = x_range[2], by = step))
+      y_add <- seq(from = y_range[1], to = y_range[2], 
+                   length.out = length(x_add))
+    }
+    else {
+      y_range <- c(max_y + diff(range(y_limit)) * 0.2, 
+                   min_y - diff(range(y_limit)) * 0.2)
+      x_range <- c(min_x - diff(range(x_limit)) * 0.2, 
+                   max_x + diff(range(x_limit)) * 0.2)
+      step <- abs(summary_es - x_range[1])/(150 * detail_level - 
+                                              1)
+      x_add <- c(seq(from = x_range[1], to = summary_es, 
+                     length.out = 150 * detail_level), seq(from = summary_es + 
+                                                             step, to = x_range[2], by = step))
+      y_add <- 1/seq(from = y_range[1], to = y_range[2], 
+                     length.out = length(x_add))
+    }
+    study_grid <- expand.grid(x_add, y_add)
+    names(study_grid) <- c("x_add", "y_add")
+    addev_data <- apply(study_grid, 1, function(x) {
+      if (method == "FE") {
+        M_new <- sum((1/c(se, x[2])^2) * c(es, x[1]))/sum(1/c(se, 
+                                                              x[2])^2)
+        Mse_new <- sqrt(1/sum(1/c(se, x[2])^2))
+        p.val <- stats::pnorm(M_new/Mse_new)
+        c(M_new, p.val)
+      }
+      else {
+        if (method == "DL") {
+          res_dl <- rem_dl(es = c(es, x[1]), se = c(se, 
+                                                    x[2]))
+          M_new <- res_dl[1]
+          p.val <- stats::pnorm(res_dl[1]/res_dl[2])
+          c(M_new, p.val)
+        }
+        else {
+          mod <- metafor::rma.uni(yi = c(es, x[1]), 
+                                  sei = c(se, x[2]), method = method, control = list(stepadj = 0.5, 
+                                                                                     maxiter = 1000))
+          p.val <- stats::pnorm(mod$z)
+          M_new <- mod$b[[1]]
+          c(M_new, p.val)
+        }
+      }
+    })
+    addev_data <- t(addev_data)
+    addev_data <- data.frame(study_grid, M = addev_data[, 
+                                                        1], sig_group = factor(ifelse(addev_data[, 2] < 
+                                                                                        0.025, "sig.neg. ", ifelse(addev_data[, 2] > 0.975, 
+                                                                                                                   "sig.pos. ", "not sig. ")), levels = c("sig.neg. ", 
+                                                                                                                                                          "not sig. ", "sig.pos. ")))
+    addev_data <- addev_data[order(addev_data$x_add, decreasing = F), 
+    ]
+    if (y_axis == "precision") {
+      addev_data$y_add <- 1/addev_data$y_add
+    }
+  }
+  if (!is.null(x_trans_function) && !is.function(x_trans_function)) {
+    warning("Argument x_trans_function must be a function; input ignored.")
+    x_trans_function <- NULL
+  }
+  y <- NULL
+  sig_group <- NULL
+  x.01 <- NULL
+  x.05 <- NULL
+  tnf_summary <- NULL
+  intercept <- NULL
+  slope <- NULL
+  p <- ggplot(data = plotdata, aes(x = es, y = y))
+  if (addev_contours == TRUE) {
+    p <- p + geom_raster(data = addev_data, aes(x = x_add, 
+                                                y = y_add, fill = sig_group), alpha = 0.4) + scale_fill_manual(name = "", 
+                                                                                                               values = c(col[9], col[1], col[4]), drop = FALSE)
+  }
+  if (sig_contours == TRUE && y_axis == "se") {
+    p <- p + geom_polygon(data = sig_funneldata, aes(x = x, 
+                                                     y = y), fill = col[9], alpha = 0.6) + geom_path(data = sig_funneldata, 
+                                                                                                     aes(x = x, y = y))
+  }
+  else {
+    if (sig_contours == TRUE && y_axis == "precision") {
+      p <- p + geom_polygon(data = sig_funneldata, aes(x = x, 
+                                                       y = y), fill = col[9], alpha = 0.6) + geom_path(data = sig_funneldata, 
+                                                                                                       aes(x = x, y = y))
+    }
+  }
+  if (contours == TRUE) {
+    p <- p + geom_path(data = funneldata, aes(x = x, y = y)) + 
+      geom_vline(xintercept = summary_es)
+  }
+  if (y_axis == "se") {
+    p <- p + scale_y_reverse(name = ylab)
+    y_limit <- rev(y_limit)
+  }
+  else {
+    if (y_axis == "precision") {
+      p <- p + scale_y_continuous(name = ylab)
+    }
+  }
+  if (trim_and_fill == TRUE) {
+    if (dim(tnfdata)[1] > 0) {
+      if (is.null(group)) {
+        p <- p + geom_point(data = tnfdata, aes(x = es, 
+                                                y = y), size = point_size, col = "black", 
+                            alpha = 1)
+      }
+      else {
+        p <- p + geom_point(data = tnfdata, aes(x = es, 
+                                                y = y, shape = group), size = point_size, 
+                            col = "black", alpha = 1)
+      }
+      if (contours == TRUE) {
+        p <- p + geom_vline(data = tnfdata, aes(xintercept = tnf_summary), 
+                            lty = "dashed")
+      }
+    }
+  }
+  if (is.null(group)) {
+    p <- p + geom_point(size = point_size, fill = "white", 
+                        shape = 21, col = "black", alpha = 1)
+  }
+  else {
+    p <- p + geom_point(aes(col = group, shape = group), 
+                        size = point_size, alpha = 1)
+  }
+  if (egger == TRUE && y_axis == "se") {
+    p <- p + geom_abline(data = eggerdata, aes(intercept = intercept, 
+                                               slope = slope), lty = "dashed", lwd = 1, color = "firebrick")
+  }
+  if (!is.null(x_trans_function)) {
+    if (is.null(x_breaks)) {
+      p <- p + scale_x_continuous(name = xlab, labels = function(x) {
+        round(x_trans_function(x), 3)
+      })
+    }
+    else {
+      p <- p + scale_x_continuous(name = xlab, labels = function(x) {
+        round(x_trans_function(x), 3)
+      }, breaks = x_breaks)
+    }
+  }
+  else {
+    if (is.null(x_breaks)) {
+      p <- p + scale_x_continuous(name = xlab)
+    }
+    else {
+      p <- p + scale_x_continuous(breaks = x_breaks, name = xlab)
+    }
+  }
+  p <- p + coord_cartesian(xlim = x_limit, ylim = y_limit, 
+                           expand = F) + scale_shape_manual(values = 15:19, name = group_legend_title) + 
+    scale_color_brewer(name = group_legend_title, palette = "Set1", 
+                       type = "qual")
+  if (group_legend == FALSE) {
+    p <- p + guides(color = "none", shape = "none")
+  }
+  if (addev_contours == TRUE) {
+    legend.key <- element_rect(color = "black")
+  }
+  else {
+    legend.key <- element_rect(color = "white")
+  }
+  p <- p + theme_bw() + theme(text = element_text(size = 1/0.352777778 * 
+                                                    text_size), legend.position = "bottom", legend.key = legend.key, 
+                              panel.grid.major.y = element_blank(), panel.grid.minor.y = element_blank(), 
+                              panel.grid.major.x = element_blank(), panel.grid.minor.x = element_blank())
+  p
+}
+```
+
+
+```{r Creating a function for funnel Plots using metaviz for unfiltered data}
+#Defining function to create funnel plot for a given metric
+funnelunfiltered = function (m) {
+  if (m %in% metric){
+  #Filtering Funnel data for specific metric input
+  funnel_df_grp = funnel_df %>% filter(Metric == m)
+  #Creating meta type object to calculate Eggers Bias
+  meta_grp <- metacont(n.e, mean.e , as.numeric(sd.e), n.c, mean.c, as.numeric(sd.c) ,
+                       data = funnel_df_grp, sm='smd', studlab=AY)
+  bias= eggers.test(meta_grp)
+  x=round(as.numeric(bias['intercept']), digits=3)
+  xpvalue=round(as.numeric(bias['p']), digits=3)
+  
+  #determining which side to trim and fill
+  if(x>0){ side='right' }
+  else{side='left'}
+  
+  #creating funnel-plot
+  viz_data_grp= viz_data %>% filter(Metric== m) 
+  #creating coefficients which will be later used for annotations
+  meansmd=viz_data_grp$TE %>% mean() 
+  meansmd=round(meansmd, digits=3)
+  
+  #creating annotations for each funnel plot
+  annotations <- data.frame(
+    xpos = c(-Inf, Inf),
+    ypos =  c(-Inf, -Inf),
+    annotateText =c( paste(paste(' Bias =', paste(x,'\n',sep=''), paste('p-value=', xpvalue))), paste('Mean SMD=',meansmd)),
+    hjustvar = c(-0.2, 1.2 ),
+    vjustvar = c(1.5, 2)) #<- adjust
+  
+  #building the funnel plot
+  funnelplot= viz_funnelcustom(x= viz_data_grp[,c('TE', 'seTE')],
+                   text_size = 5,
+                   xlab = 'Standardized Mean Difference',
+                   group= viz_data_grp[,'Funded'],
+                   contours = TRUE, 
+                   contours_col='Greys',
+                   group_legend = TRUE,
+                   group_legend_title = 'Funding\nSource',
+                   method = "DL",
+                   egger = TRUE,
+                   trim_and_fill=TRUE,
+                   trim_and_fill_side = side) +
+    ggtitle(paste('Funnel Plot for', m)) + 
+    theme(plot.title = element_text(hjust = 0.5)) +
+    geom_label_repel(aes(label = viz_data_grp[,'AY']),
+                     label.size = 0.2,
+                     box.padding   = .25, 
+                     point.padding = .25,
+                     segment.color = 'black') +
+    geom_text(data=annotations,aes(x=xpos,
+                                   y=ypos,
+                                   hjust=hjustvar,
+                                   vjust=vjustvar,
+                                   label=annotateText))
+   #print(funnelplot)
+    ggplotly(funnelplot)
+  }
+  else{
+    print('metric not found')
+  }
+}
+
+```
+
+```{r Creating a function for funnel Plots using metaviz for min finltered data}
+## Filtering Studies
+
+#In our survey of publications, we observed that a single study may compare more than two diet treatments. We considered the pairwise comparisons of these diets while considering the high beef diets as the treatment group. This led us to count a single study multiple times in the first publication bias analysis.
+
+#We created funnel plots and Egger’s test for bias while only taking the individual diets with largest/smallest ratio $\dfrac{(SMD- mean SMD)}{(SE)}$, thus choosing the most extreme results from a single diet in an individual study.
+
+#It is important to note that these choices change the axis of symmetry the resulting funnel plot (mean SMD) and therefore we cannot compare the bias values from Egger’s test directly and instead focus on the p-value for each subset. 
+
+funnelmin = function (m) {
+  if (m %in% metric){
+  #Filtering Funnel data for specific metric input
+  funnel_df_grp = funnel_df %>% filter(Metric == m)
+  
+  #Creating the ratio column to detect extreme studies.
+  meansmd=funnel_df_grp$TE %>% mean() 
+  meansmd=round(meansmd, digits=3)
+  funnel_df_grp = funnel_df_grp %>% mutate(ratio = (funnel_df_grp$TE - meansmd)/(funnel_df_grp$seTE))
+  funnel_df_grp = funnel_df_grp %>% group_by(AY) %>% slice(which.min(ratio))
+  
+  #Creating meta type object to calculate Eggers Bias
+  meta_grp <- metacont(n.e, mean.e , as.numeric(sd.e), n.c, mean.c, as.numeric(sd.c) ,
+                       data = funnel_df_grp, sm='smd', studlab=AY)
+  bias= eggers.test(meta_grp)
+  x=round(as.numeric(bias['intercept']), digits=3)
+  xpvalue=round(as.numeric(bias['p']), digits=3)
+  
+  #determining which side to trim and fill
+  if(x>0){ side='right' }
+  else{side='left'}
+  
+  #Selecting relevant variables for metaviz package
+  viz_data_grp= funnel_df_grp %>% select('AY' , 'Metric','Funded', 'TE', 'seTE') %>% as.data.frame()
+  
+  #creating coefficients which will be later used for annotations
+  meansmd=viz_data_grp$TE %>% mean() 
+  meansmd=round(meansmd, digits=3)
+  
+  #creating annotations for each funnelplot
+  annotations <- data.frame(
+    xpos = c(-Inf, Inf),
+    ypos =  c(-Inf, -Inf),
+    annotateText =c( paste(paste(' Bias =', paste(x,'\n',sep=''), paste('p-value=', xpvalue))), paste('Mean SMD=',meansmd)),
+    hjustvar = c(-0.2, 1.2 ),
+    vjustvar = c(1.5, 2)) #<- adjust
+  
+  #building the funnelplot
+  funnelplot= viz_funnelcustom(x= viz_data_grp[,c('TE', 'seTE')],
+                   text_size = 5,
+                   xlab = 'Standardized Mean Difference',
+                   group= viz_data_grp[,'Funded'],
+                   contours = TRUE, contours_col='Greys',
+                   group_legend = TRUE,
+                   method = "DL",
+                   group_legend_title = 'Funding \nSource',
+                   egger = TRUE,
+                   trim_and_fill=TRUE,
+                   trim_and_fill_side = side) +
+    ggtitle(paste('Min Funnel Plot for ', m)) + 
+    theme(plot.title = element_text(hjust = 0.5)) +
+    geom_label_repel(aes(label = viz_data_grp[,'AY']),
+                     label.size = 0.2,
+                     box.padding   = .25, 
+                     point.padding = .25,
+                     segment.color = 'black') +
+    geom_text(data=annotations,aes(x=xpos,
+                                   y=ypos,
+                                   hjust=hjustvar,
+                                   vjust=vjustvar,
+                                   label=annotateText))
+   #print(funnelplot)
+   ggplotly(funnelplot)
+  }
+  else{
+    print('metric not found')
+  }
+}
+```
+
+```{r Creating a function for funnel Plots using metaviz for max finltered data}
+funnelmax = function (m) {
+  if (m %in% metric){
+  #Filtering Funnel data for specific metric input
+  funnel_df_grp = funnel_df %>% filter(Metric == m)
+  
+  #Creating the ratio column to detect extreme studies.
+  meansmd=funnel_df_grp$TE %>% mean() 
+  meansmd=round(meansmd, digits=3)
+  funnel_df_grp = funnel_df_grp %>% mutate(ratio = (funnel_df_grp$TE - meansmd)/(funnel_df_grp$seTE))
+  funnel_df_grp = funnel_df_grp %>% group_by(AY) %>% slice(which.max(ratio))
+  
+  #Creating meta type object to calculate Eggers Bias
+  meta_grp <- metacont(n.e, mean.e , as.numeric(sd.e), n.c, mean.c, as.numeric(sd.c) ,
+                       data = funnel_df_grp, sm='smd', studlab=AY)
+  bias= eggers.test(meta_grp)
+  x=round(as.numeric(bias['intercept']), digits=3)
+  xpvalue=round(as.numeric(bias['p']), digits=3)
+  
+  #determining which side to trim and fill
+  if(x>0){ side='right' }
+  else{side='left'}
+  
+  #Selecting relevant variables for metaviz package
+  viz_data_grp= funnel_df_grp %>% select('AY' , 'Metric','Funded', 'TE', 'seTE') %>% as.data.frame()
+  
+  #creating coefficients which will be later used for annotations
+  meansmd=viz_data_grp$TE %>% mean() 
+  meansmd=round(meansmd, digits=3)
+  
+  #creating annotations for each funnelplot
+  annotations <- data.frame(
+    xpos = c(-Inf, Inf),
+    ypos =  c(-Inf, -Inf),
+    annotateText =c( paste(paste(' Bias =', paste(x,'\n',sep=''), paste('p-value=', xpvalue))), paste('Mean SMD=',meansmd)),
+    hjustvar = c(-0.2, 1.2 ),
+    vjustvar = c(1.5, 2)) #<- adjust
+  
+  #building the funnelplot
+  funnelplot= viz_funnelcustom(x= viz_data_grp[,c('TE', 'seTE')],
+                   text_size = 5,
+                   xlab = 'Standardized Mean Difference',
+                   group= viz_data_grp[,'Funded'],
+                   contours = TRUE, contours_col='Greys',
+                   group_legend = TRUE,
+                   method = "DL",
+                   group_legend_title = 'Funding \nSource',
+                   egger = TRUE,
+                   trim_and_fill=TRUE,
+                   trim_and_fill_side = side) +
+    ggtitle(paste('Max Funnel Plot for ', m)) + 
+    theme(plot.title = element_text(hjust = 0.5)) +
+    geom_label_repel(aes(label = viz_data_grp[,'AY']),
+                     label.size = 0.2,
+                     box.padding   = .25, 
+                     point.padding = .25,
+                     segment.color = 'black') +
+    geom_text(data=annotations,aes(x=xpos,
+                                   y=ypos,
+                                   hjust=hjustvar,
+                                   vjust=vjustvar,
+                                   label=annotateText))
+   #print(funnelplot)
+   ggplotly(funnelplot)
+  }
+  else{
+    print('metric not found')
+  }
+}
+```
+
+```{r Bias Table}
+#Calculating Bias for unfiltered
+biasdata=data.frame(matrix(ncol = 2, nrow = 7))
+rownames(biasdata)= metric
+colnames(biasdata)= c('Unfiltered Bias', 'p-value')
+
+# Creates a table for bias and p-values for unfiltered data
+for (m in metric){
+  funnel_df_grp = funnel_df %>% filter(Metric == m)
+  if (nrow(funnel_df_grp)>9){
+  meta_grp <- metacont(n.e,
+                       mean.e ,
+                       as.numeric(sd.e),
+                       n.c,
+                       mean.c,
+                       as.numeric(sd.c) ,
+                       data = funnel_df_grp,
+                       sm='smd',
+                       studlab=AY)
+  bias= eggers.test(meta_grp)
+  x=round(as.numeric(bias['intercept']), digits=3)
+  xpvalue=round(as.numeric(bias['p']), digits=3)
+  
+  biasdata[m,'Unfiltered Bias']=x
+  biasdata[m,'p-value']=xpvalue
+  
+  }
+  
+}
+
+#Calculating Bias while choosing maximum value from each study
+biasdata_max=data.frame( matrix(ncol = 2, nrow = 7))
+rownames(biasdata_max)= metric
+colnames(biasdata_max)= c('Max Bias', 'p-value')
+
+# Creates a table for bias and p-values for max filtered data
+for (m in metric){
+  funnel_df_grp = funnel_df %>% filter(Metric == m)
+  meansmd=funnel_df_grp$TE %>% mean() 
+  meansmd=round(meansmd, digits=3)
+  # funnel_df_grp['ratio']= (funnel_df_grp$TE - meansmd)/(funnel_df_grp$seTE)
+  funnel_df_grp = funnel_df_grp %>% mutate(ratio = (funnel_df_grp$TE - meansmd)/(funnel_df_grp$seTE))
+  
+  funnel_df_grp = funnel_df_grp %>% group_by(AY) %>% slice(which.max(ratio))
+  
+  nam <- paste("data_max", m, sep = "_")
+  assign(nam, funnel_df_grp)
+  
+  if (nrow(funnel_df_grp)>9){
+  meta_grp <- metacont(n.e,
+                       mean.e ,
+                       as.numeric(sd.e),
+                       n.c,
+                       mean.c,
+                       as.numeric(sd.c) ,
+                       data = funnel_df_grp,
+                       sm='smd',
+                       studlab=AY)
+  bias= eggers.test(meta_grp)
+  x=round(as.numeric(bias['intercept']), digits=3)
+  xpvalue=round(as.numeric(bias['p']), digits=3)
+  
+  biasdata_max[m,'Max Bias']=x
+  biasdata_max[m,'p-value']=xpvalue 
+  }
+}
+
+
+#Calculating Bias while choosing minimum value from each study
+biasdata_min=data.frame( matrix(ncol = 2, nrow = 7))
+rownames(biasdata_min)= metric
+colnames(biasdata_min)= c('Min Bias', 'p-value')
+
+# Creates a table for bias and p-values for min filtered data
+for (m in metric){
+  funnel_df_grp = funnel_df %>% filter(Metric == m)
+  meansmd=funnel_df_grp$TE %>% mean() 
+  meansmd=round(meansmd, digits=3)
+  funnel_df_grp = funnel_df_grp %>% mutate(ratio = (funnel_df_grp$TE - meansmd)/(funnel_df_grp$seTE))
+  
+  funnel_df_grp = funnel_df_grp %>% group_by(AY) %>% slice(which.min(ratio))
+  
+  nam <- paste("data_min", m, sep = "_")
+  assign(nam, funnel_df_grp)
+  
+  if (nrow(funnel_df_grp)>9){
+  meta_grp <- metacont(n.e, mean.e , as.numeric(sd.e), n.c, mean.c, as.numeric(sd.c) ,
+                           data = funnel_df_grp, sm='smd', studlab=AY)
+  bias= eggers.test(meta_grp)
+  x=round(as.numeric(bias['intercept']), digits=3)
+  xpvalue=round(as.numeric(bias['p']), digits=3)
+  
+  biasdata_min[m,'Min Bias']=x
+  biasdata_min[m,'p-value']=xpvalue 
+  }
+}
+
+#Combining bias and p-values for unfiltered and filtered metrics
+all_bias = bind_cols("Metric" = metric,biasdata) %>% 
+  bind_cols(biasdata_min) %>% 
+  bind_cols(biasdata_max)
+
+#Changing the column names 
+colnames(all_bias)=c('Metric', 'Unfiltered.Bias', 'Unfiltered.p-value',
+                      'Min Filtered.Bias', 'Min Filtered.p-value',
+                      'Max Filtered.Bias', 'Max Filtered.p-value')
+
+#Creating the table of bias and p-values for unfiltered and filtered metrics
+bias_table = all_bias %>% 
+  gt() %>%
+  cols_align(
+    align = "center") %>% 
+  tab_header(
+    title = md("Egger's  Bias Test Result")
+    ) %>% 
+  tab_spanner_delim(
+    delim = ".",
+    columns = c(2:7),
+    #gather = TRUE,
+    split = c("last", "first")
+  ) %>% 
+  tab_source_note(
+    source_note = "NA indicates metrics with fewer than 10 results"
+  ) %>% 
+  tab_options(
+    data_row.padding = px(3),
+    container.height = "100%"
+   )
+```
+
+
+```{r three-level meta analysis all RCT}
+# Calculating and visualizing a three-level meta analysis for RCTs all comparisons (unfiltered)
+
+## Pooled Effects Calculation
+
+#The following section calculates the pooled effect size of each health metric for the RCTs using a three-level framework. Output is a meta object.  This can then be used to create the forest plots. The variable Author (Year) is used to group treatment arms coming from the same study. This analysis utilizes a three level framework to account for the Dependence in the independent studies introduced from comparing multiple treatments to the same control group. The three-level structure assumes a random effects model and uses the Restricted Maximum Likelihood (REML) estimator to estimate $\tau^2$, the variance of the true effect sizes. Knapp-Hartung adjustment to control for the uncertainty in our estimate of the between-study heterogeneity are not used.  Using the Knapp-Hartung adjustments would result in wider confidence intervals. 
+
+# Weight Values
+WeightValues_rct_multi = effect_rct %>% filter(Metric=="Weight Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#Total-cholesterol
+Total_cholesterol_rct_multi = effect_rct %>% filter(Metric=="Total-cholesterol") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#LDL-Cholesterol
+LDL_Cholesterol_rct_multi = effect_rct %>% filter(Metric=="LDL-Cholesterol") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#HDL-Cholesterol
+HDL_Cholesterol_rct_multi = effect_rct %>% filter(Metric=="HDL-Cholesterol") %>%
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE,
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#Triglyceride
+Triglyceride_rct_multi = effect_rct %>% filter(Metric=="Triglyceride") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#BMI Values
+BMIValues_rct_multi = effect_rct %>% filter(Metric=="BMI Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#% Body Fat Values
+PercentBodyFatValues_rct_multi = effect_rct %>% filter(Metric=="% Body Fat Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+```
+
+```{r forest plots three-level model all RCT, include=FALSE, out.height="100%", out.width="100%"}
+## Forest Plots for the three-level model for RCTs all comparisons (unfiltered)
+
+#This section creates forest plots for each metric for three-level model for all RCT studies. Individual study weights are not available for the three-level model
+
+#Weight Values
+png(file = "./Forest_Plots/forest_weight_rct_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(WeightValues_rct_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Weight)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#Total Cholesterol
+png(file = "./Forest_Plots/forest_total_cholesterol_rct_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(Total_cholesterol_rct_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Total Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#LDL Cholesterol
+png(file = "./Forest_Plots/forest_LDL_cholesterol_rct_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(LDL_Cholesterol_rct_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (LDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#HDL Cholesterol 
+png(file = "./Forest_Plots/forest_HDL_cholesterol_rct_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(HDL_Cholesterol_rct_multi, sortvar = TE, prediction = TRUE,
+            smlab = "Standardized Mean \nDifference (HDL Cholesterol)",
+            weight.study = "random",
+            leftcols = c("studlab", "TE", "seTE"),
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center",
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#Triglyceride
+png(file = "./Forest_Plots/forest_Triglycerides_rct_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(Triglyceride_rct_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Triglycerides)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#BMI
+png(file = "./Forest_Plots/forest_BMI_rct_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(BMIValues_rct_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (BMI)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#% Body Fat
+png(file = "./Forest_Plots/forest_percent_body_fat_rct_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(PercentBodyFatValues_rct_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (% Body Fat)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+```
+
+```{r three-level model pooled effect size all crossover}
+# Calculating and visualizing Pooled Effect Sizes (Crossover trials) all comparisons
+
+## Pooled Effects Calculation
+
+#The following section calculates the pooled effect size of each health metric for the crossover trials using a three-level framework. Output is a meta object.  This can then be used to create the forest plots.  The variable Author (Year) is used to group treatment arms coming from the same study. This analysis utilizes a three level framework to account for the Dependence in the independent studies introduced from comparing multiple treatments to the same control group. The three-level structure assumes a random effects model and uses the Restricted Maximum Likelihood (REML) estimator to estimate $\tau^2$, the variance of the true effect sizes. Knapp-Hartung adjustment to control for the uncertainty in our estimate of the between-study heterogeneity are not used.  Using the Knapp-Hartung adjustments would result in wider confidence intervals.  
+
+# Weight Values
+WeightValues_crossover_multi = effect_cross_over %>% filter(Metric=="Weight Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#Total-cholesterol
+Total_cholesterol_crossover_multi = effect_cross_over %>% 
+  filter(Metric=="Total-cholesterol") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#LDL-Cholesterol
+LDL_Cholesterol_crossover_multi = effect_cross_over %>% 
+  filter(Metric=="LDL-Cholesterol") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#HDL-Cholesterol
+HDL_Cholesterol_crossover_multi = effect_cross_over %>%
+  filter(Metric=="HDL-Cholesterol") %>%
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE,
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#Triglyceride
+Triglyceride_crossover_multi = effect_cross_over %>% 
+  filter(Metric=="Triglyceride") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+           method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#BMI Values
+BMIValues_crossover_multi = effect_cross_over %>% 
+  filter(Metric=="BMI Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#% Body Fat Values
+PercentBodyFatValues_crossover_multi = effect_cross_over %>% filter(Metric=="% Body Fat Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+```
+
+```{r three-level model forest plots all crossover, include=FALSE, out.height="100%", out.width="100%"}
+## Forest Plots for three-level model of crossover studies all comparisons
+
+#This section creates forest plots for each metric for three-level model for all crossover studies. Individual study weights are not available for the three-level model
+
+#Weight Values
+png(file = "./Forest_Plots/forest_weight_crossover_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(WeightValues_crossover_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Weight)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#Total Cholesterol
+png(file = "./Forest_Plots/forest_total_cholesterol_crossover_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(Total_cholesterol_crossover_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Total Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#LDL Cholesterol
+png(file = "./Forest_Plots/forest_LDL_cholesterol_crossover_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(LDL_Cholesterol_crossover_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (LDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+png(file = "./Forest_Plots/forest_HDL_cholesterol_crossover_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(HDL_Cholesterol_crossover_multi, sortvar = TE, prediction = TRUE,
+            smlab = "Standardized Mean \nDifference (HDL Cholesterol)",
+            weight.study = "random",
+            leftcols = c("studlab", "TE", "seTE"),
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center",
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#Triglyceride
+png(file = "./Forest_Plots/forest_Triglycerides_crossover_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(Triglyceride_crossover_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Triglycerides)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#BMI
+png(file = "./Forest_Plots/forest_BMI_crossover_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(BMIValues_crossover_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (BMI)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#% Body Fat
+png(file = "./Forest_Plots/forest_percent_body_fat_crossover_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(PercentBodyFatValues_crossover_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (% Body Fat)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+```
+
+```{r three-level meta analysis all studies RCT and Crossover}
+# Calculating and visualizing a three-level meta analysis for studies (RCTs and RCOs) all comparisons (unfiltered)
+
+## Pooled Effects Calculation
+
+#The following section calculates the pooled effect size of each health metric for all studies using a three-level framework. Output is a meta object.  This can then be used to create the forest plots. The variable Author (Year) is used to group treatment arms coming from the same study. This analysis utilizes a three level framework to account for the Dependence in the independent studies introduced from comparing multiple treatments to the same control group. The three-level structure assumes a random effects model and uses the Restricted Maximum Likelihood (REML) estimator to estimate $\tau^2$, the variance of the true effect sizes. Knapp-Hartung adjustment to control for the uncertainty in our estimate of the between-study heterogeneity are not used.  Using the Knapp-Hartung adjustments would result in wider confidence intervals. 
+
+# Weight Values
+WeightValues_all_multi = effect_all %>% filter(Metric=="Weight Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#Total-cholesterol
+Total_cholesterol_all_multi = effect_all %>% filter(Metric=="Total-cholesterol") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#LDL-Cholesterol
+LDL_Cholesterol_all_multi = effect_all %>% filter(Metric=="LDL-Cholesterol") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#HDL-Cholesterol
+HDL_Cholesterol_all_multi = effect_all %>% filter(Metric=="HDL-Cholesterol") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#Triglyceride
+Triglyceride_all_multi = effect_all %>% filter(Metric=="Triglyceride") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+
+#BMI Values
+BMIValues_all_multi = effect_all %>% filter(Metric=="BMI Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster= `Author (Year)`
+  )
+
+#% Body Fat Values
+PercentBodyFatValues_all_multi = effect_all %>% filter(Metric=="% Body Fat Values") %>% 
+  metagen(TE = effect_size,
+          seTE = std_error,
+          studlab = auth_treat,
+          sm = "SMD",
+          comb.random = TRUE, 
+          hakn = FALSE,
+          method.tau = "REML",
+          cluster = `Author (Year)`
+  )
+```
+
+```{r forest plots multilevel model all studies RCT and RCO, include=FALSE, out.height="100%", out.width="100%"}
+## Forest Plots for the three-level model for all studies all comparisons (unfiltered)
+
+#This section creates forest plots for each metric for three-level model for all studies. Individual study weights are not available for the three-level model
+
+#Weight Values
+png(file = "./Forest_Plots/forest_weight_all_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(WeightValues_all_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Weight)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#Total Cholesterol
+png(file = "./Forest_Plots/forest_total_cholesterol_all_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(Total_cholesterol_all_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Total Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#LDL Cholesterol
+png(file = "./Forest_Plots/forest_LDL_cholesterol_all_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(LDL_Cholesterol_all_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (LDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#HDL Cholesterol
+png(file = "./Forest_Plots/forest_HDL_cholesterol_all_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(HDL_Cholesterol_all_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (HDL Cholesterol)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#Triglyceride
+png(file = "./Forest_Plots/forest_Triglycerides_all_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(Triglyceride_all_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (Triglycerides)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#BMI
+png(file = "./Forest_Plots/forest_BMI_all_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(BMIValues_all_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (BMI)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+
+#% Body Fat
+png(file = "./Forest_Plots/forest_percent_body_fat_all_multi.png", width = 3800, height = 2400, res = 300)
+
+forest(PercentBodyFatValues_all_multi, sortvar = TE, prediction = TRUE, 
+            smlab = "Standardized Mean \nDifference (% Body Fat)", 
+            weight.study = "random", 
+            leftcols = c("studlab", "TE", "seTE"), 
+            leftlabs = c("Study", "SMD", "SE"),
+            just = "Center", 
+            rightcols = c("ci"),
+            rightlabs = c("95%-CI"))
+
+dev.off()
+```
+
+RCT {data-navmenu="Pooled Effect Size Unfiltered"}
+==============================================================================
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+All 95% CI for pooled effect sizes include 0 indicating no evidence of a statistically significant effect of URM consumption.  These forest plots include all treatment arm effect sizes for the included studies.  Individual studies may contribute more than 1 effect size if multiple treatments were tested.  To adjust for this we have recalculated the pooled effect sizes using only the most extreme negative or positive effect from each study.  These can be found in the Pooled Effect Filtered tab. 
+
+### Weight
+
+
+![](./Forest_Plots/forest_weight_rct.png)
+
+
+### BMI
+
+![](./Forest_Plots/forest_BMI_rct.png)
+
+### Percent Body Fat
+
+![](./Forest_Plots/forest_percent_body_fat_rct.png)
+
+### Total Cholesterol
+
+![](./Forest_Plots/forest_total_cholesterol_rct.png)
+
+### LDL Cholesterol
+
+![](./Forest_Plots/forest_LDL_cholesterol_rct.png)
+
+### HDL Cholesterol
+
+![](./Forest_Plots/forest_HDL_cholesterol_rct.png)
+
+### Triglycerides
+
+![](./Forest_Plots/forest_Triglycerides_rct.png)
+
+
+Crossover Trials {data-navmenu="Pooled Effect Size Unfiltered"}
+==============================================================================
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+All 95% CI for pooled effect sizes include 0 indicating no evidence of a statistically significant effect of URM consumption.  These forest plots include all treatment arm effect sizes for the included studies.  Individual studies may contribute more than 1 effect size if multiple treatments were tested.  To adjust for this we have recalculated the pooled effect sizes using only the most extreme negative or positive effect from each study.  These can be found in the Pooled Effect Filtered tab. 
+
+### Weight
+
+![](./Forest_Plots/forest_weight_crossover.png)
+
+### BMI
+
+![](./Forest_Plots/forest_BMI_crossover.png)
+
+### Percent Body Fat
+
+![](./Forest_Plots/forest_percent_body_fat_crossover.png)
+
+### Total Cholesterol
+
+![](./Forest_Plots/forest_total_cholesterol_crossover.png)
+
+### LDL Cholesterol
+
+![](./Forest_Plots/forest_LDL_cholesterol_crossover.png)
+
+### HDL Cholesterol
+
+![](./Forest_Plots/forest_HDL_cholesterol_crossover.png)
+
+### Triglycerides
+
+![](./Forest_Plots/forest_Triglycerides_crossover.png)
+
+All Studies (RCT and Crossover) {data-navmenu="Pooled Effect Size Unfiltered"}
+==============================================================================
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+All 95% CI for pooled effect sizes include 0 indicating no evidence of a statistically significant effect of URM consumption.  These forest plots include all treatment arm effect sizes for the included studies.  Individual studies may contribute more than 1 effect size if multiple treatments were tested.  To adjust for this we have recalculated the pooled effect sizes using only the most extreme negative or positive effect from each study.  These can be found in the Pooled Effect Filtered tab. 
+
+### Weight
+
+![](./Forest_Plots/forest_weight_all.png)
+
+### BMI
+
+![](./Forest_Plots/forest_BMI_all.png)
+
+### Percent Body Fat
+
+![](./Forest_Plots/forest_percent_body_fat_all.png)
+
+### Total Cholesterol
+
+![](./Forest_Plots/forest_total_cholesterol_all.png)
+
+### LDL Cholesterol
+
+![](./Forest_Plots/forest_LDL_cholesterol_all.png)
+
+### HDL Cholesterol
+
+![](./Forest_Plots/forest_HDL_cholesterol_all.png)
+
+### Triglycerides
+
+![](./Forest_Plots/forest_Triglycerides_all.png)
+
+
+RCT - Most Negative {data-navmenu="Pooled Effect Filtered"}
+==============================================================================
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+Pooled effect sizes on this tab are calculated by first filtering studies with multiple treatment arms for the arm with the largest negative effect size (URM consumption increases the metric). All 95% CI for pooled effect sizes include 0 indicating no evidence of a statistically significant effect of URM consumption except for LDL-Cholesterol which has a 95% CI of (-0.43, -0.06).  
+
+### Weight
+
+![](./Forest_Plots/forest_weight_rct_min.png)
+
+### BMI
+
+![](./Forest_Plots/forest_BMI_rct_min.png)
+
+### Percent Body Fat
+
+![](./Forest_Plots/forest_percent_body_fat_rct_min.png)
+
+### Total Cholesterol
+
+![](./Forest_Plots/forest_total_cholesterol_rct_min.png)
+
+### LDL Cholesterol
+
+![](./Forest_Plots/forest_LDL_cholesterol_rct_min.png)
+
+### HDL Cholesterol
+
+![](./Forest_Plots/forest_HDL_cholesterol_rct_min.png)
+
+### Triglycerides
+
+![](./Forest_Plots/forest_Triglycerides_rct_min.png)
+
+RCT - Most Positive {data-navmenu="Pooled Effect Filtered"}
+==============================================================================
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+Pooled effect sizes on this tab are calculated by first filtering studies with multiple treatment arms for the arm with the largest positive effect size (URM consumption decreases the metric). All 95% CI for pooled effect sizes include 0 indicating no evidence of a statistically significant effect of URM consumption.  
+
+### Weight
+
+![](./Forest_Plots/forest_weight_rct_max.png)
+
+### BMI
+
+![](./Forest_Plots/forest_BMI_rct_max.png)
+
+### Percent Body Fat
+
+![](./Forest_Plots/forest_percent_body_fat_rct_max.png)
+
+### Total Cholesterol
+
+![](./Forest_Plots/forest_total_cholesterol_rct_max.png)
+
+### LDL Cholesterol
+
+![](./Forest_Plots/forest_LDL_cholesterol_rct_max.png)
+
+### HDL Cholesterol
+
+![](./Forest_Plots/forest_HDL_cholesterol_rct_max.png)
+
+### Triglycerides
+
+![](./Forest_Plots/forest_Triglycerides_rct_max.png)
+
+Crossover Trials - Most Negative {data-navmenu="Pooled Effect Filtered"}
+==============================================================================
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+Pooled effect sizes on this tab are calculated by first filtering studies with multiple treatment arms for the arm with the largest negative effect size (URM consumption increases the metric). All 95% CI for pooled effect sizes include 0 indicating no evidence of a statistically significant effect of URM consumption. Only Murphy (2014) reported Weight, BMI, and Percent Body Fat. Filtering for the largest negative effect results in only 1 observation preventing a pooled effect from being calculated for these metrics.
+
+### Total Cholesterol
+
+![](./Forest_Plots/forest_total_cholesterol_crossover_min.png)
+
+### LDL Cholesterol
+
+![](./Forest_Plots/forest_LDL_cholesterol_crossover_min.png)
+
+### HDL Cholesterol
+
+![](./Forest_Plots/forest_HDL_cholesterol_crossover_min.png)
+
+### Triglycerides
+
+![](./Forest_Plots/forest_Triglycerides_crossover_min.png)
+
+Crossover Trials - Most Positive {data-navmenu="Pooled Effect Filtered"}
+==============================================================================
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+Pooled effect sizes on this tab are calculated by first filtering studies with multiple treatment arms for the arm with the largest positive effect size (URM consumption decreases the metric). All 95% CI for pooled effect sizes include 0 indicating no evidence of a statistically significant effect of URM consumption. Only Murphy (2014) reported Weight, BMI, and Percent Body Fat. Filtering for the largest positive effect results in only 1 observation preventing a pooled effect from being calculated for these metrics.
+
+### Total Cholesterol
+
+![](./Forest_Plots/forest_total_cholesterol_crossover_max.png)
+
+### LDL Cholesterol
+
+![](./Forest_Plots/forest_LDL_cholesterol_crossover_max.png)
+
+### HDL Cholesterol
+
+![](./Forest_Plots/forest_HDL_cholesterol_crossover_max.png)
+
+### Triglycerides
+
+![](./Forest_Plots/forest_Triglycerides_crossover_max.png)
+
+All Studies (RCT and Crossover) - Most Negative {data-navmenu="Pooled Effect Filtered"}
+==============================================================================
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+Pooled effect sizes on this tab are calculated by first filtering studies with multiple treatment arms for the arm with the largest negative effect size (URM consumption increases the metric). All 95% CI for pooled effect sizes include 0 indicating no evidence of a statistically significant effect of URM consumption except for Total Cholesterol which has a 95% CI of (-0.27, -0.01) and  LDL-Cholesterol which has a 95% CI of (-0.30, -0.06).  
+
+### Weight
+
+![](./Forest_Plots/forest_weight_all_min.png)
+
+### BMI
+
+![](./Forest_Plots/forest_BMI_all_min.png)
+
+### Percent Body Fat
+
+![](./Forest_Plots/forest_percent_body_fat_all_min.png)
+
+### Total Cholesterol
+
+![](./Forest_Plots/forest_total_cholesterol_all_min.png)
+
+### LDL Cholesterol
+
+![](./Forest_Plots/forest_LDL_cholesterol_all_min.png)
+
+### HDL Cholesterol
+
+![](./Forest_Plots/forest_HDL_cholesterol_all_min.png)
+
+### Triglycerides
+
+![](./Forest_Plots/forest_Triglycerides_all_min.png)
+
+All Studies (RCT and Crossover) - Most Positive {data-navmenu="Pooled Effect Filtered"}
+==============================================================================
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+Pooled effect sizes on this tab are calculated by first filtering studies with multiple treatment arms for the arm with the largest positive effect size (URM consumption decreases the metric). All 95% CI for pooled effect sizes include 0 indicating no evidence of a statistically significant effect of URM consumption.   
+
+### Weight
+
+![](./Forest_Plots/forest_weight_all_max.png)
+
+### BMI
+
+![](./Forest_Plots/forest_BMI_all_max.png)
+
+### Percent Body Fat
+
+![](./Forest_Plots/forest_percent_body_fat_all_max.png)
+
+### Total Cholesterol
+
+![](./Forest_Plots/forest_total_cholesterol_all_max.png)
+
+### LDL Cholesterol
+
+![](./Forest_Plots/forest_LDL_cholesterol_all_max.png)
+
+### HDL Cholesterol
+
+![](./Forest_Plots/forest_HDL_cholesterol_all_max.png)
+
+### Triglycerides
+
+![](./Forest_Plots/forest_Triglycerides_all_max.png)
+
+
+Outliers
+==============================================================================
+
+A study was deemed to be an outlier if its 95% CI for the effect size did not overlap with the 95% CI of the pooled effect size.  If an outlier was found in the analysis it was removed and the pooled effect size and 95% CI were recalculated without the outlier study (shown below). Removing outliers did not change our results or conclusions. No outliers were found for the crossover trials.
+
+Row 
+-----------------------------------------------------------------------
+
+### RCT - Outliers
+
+```{r, out.width="100%", out.height="100%"}
+out_rct_table
+```
+
+RCT - Influence {data-navmenu="Influence"}
+==============================================================================
+
+Row {.tabset}
+-----------------------------------------------------------------------
+
+Leave one out meta-analysis was conducted to assess influential studies.  Each row of the plot displays the 95% CI for the pooled effect size with the given study removed. The green band represents the pooled effect size with all shown studies included.
+
+### Weight
+
+![](./Leave_one_out/loo_weight_rct.png)
+
+
+
+### BMI
+
+![](./Leave_one_out/loo_BMI_rct.png)
+
+### Percent Body Fat
+
+![](./Leave_one_out/loo_PercentBodyFat_rct.png)
+
+### Total Cholesterol
+
+![](./Leave_one_out/loo_Total_cholesterol_rct.png)
+
+### LDL Cholesterol
+
+![](./Leave_one_out/loo_LDL_cholesterol_rct.png)
+
+### HDL Cholesterol
+
+![](./Leave_one_out/loo_HDL_cholesterol_rct.png)
+
+### Triglycerides
+
+![](./Leave_one_out/loo_Triglyceride_rct.png)
+
+RCT - Most Negative - Influence {data-navmenu="Influence"}
+==============================================================================
+
+Row {.tabset}
+-----------------------------------------------------------------------
+
+Leave one out meta-analysis was conducted to assess influential studies.  Each row of the plot displays the 95% CI for the pooled effect size with the given study removed. The green band represents the pooled effect size with all shown studies included. This analysis was conducted by first filtering studies with multiple treatment arms for the arm with the largest negative effect size (URM consumption increases the metric). 
+
+### Weight
+
+![](./Leave_one_out/loo_Weight_rct_min.png)
+
+### BMI
+
+![](./Leave_one_out/loo_BMI_rct_min.png)
+
+### Percent Body Fat
+
+![](./Leave_one_out/loo_PercentBodyFat_rct_min.png)
+
+### Total Cholesterol
+
+![](./Leave_one_out/loo_Total_cholesterol_rct_min.png)
+
+### LDL Cholesterol
+
+![](./Leave_one_out/loo_LDL_cholesterol_rct_min.png)
+
+### HDL Cholesterol
+
+![](./Leave_one_out/loo_HDL_cholesterol_rct_min.png)
+
+### Triglycerides
+
+![](./Leave_one_out/loo_Triglyceride_rct_min.png)
+
+
+RCT - Most Positive - Influence {data-navmenu="Influence"}
+==============================================================================
+
+Row {.tabset}
+-----------------------------------------------------------------------
+
+Leave one out meta-analysis was conducted to assess influential studies.  Each row of the plot displays the 95% CI for the pooled effect size with the given study removed. The green band represents the pooled effect size with all shown studies included. This analysis was conducted by first filtering studies with multiple treatment arms for the arm with the largest positive effect size (URM consumption decreases the metric). 
+
+### Weight
+
+![](./Leave_one_out/loo_Weight_rct_max.png)
+
+### BMI
+
+![](./Leave_one_out/loo_BMI_rct_max.png)
+
+### Percent Body Fat
+
+![](./Leave_one_out/loo_PercentBodyFat_rct_max.png)
+
+### Total Cholesterol
+
+![](./Leave_one_out/loo_Total_cholesterol_rct_max.png)
+
+### LDL Cholesterol
+
+![](./Leave_one_out/loo_LDL_cholesterol_rct_max.png)
+
+### HDL Cholesterol
+
+![](./Leave_one_out/loo_HDL_cholesterol_rct_max.png)
+
+
+### Triglycerides
+
+![](./Leave_one_out/loo_Triglyceride_rct_max.png)
+
+
+Crossover - Influence {data-navmenu="Influence"}
+==============================================================================
+
+Row {.tabset}
+-----------------------------------------------------------------------
+
+Leave one out meta-analysis was conducted to assess influential studies.  Each row of the plot displays the 95% CI for the pooled effect size with the given study removed. The green band represents the pooled effect size with all shown studies included.
+
+### Weight
+
+![](./Leave_one_out/loo_weight_crossover.png)
+
+### BMI
+
+![](./Leave_one_out/loo_BMI_crossover.png)
+
+### Percent Body Fat
+
+![](./Leave_one_out/loo_PercentBodyFat_crossover.png)
+
+### Total Cholesterol
+
+![](./Leave_one_out/loo_Total_cholesterol_crossover.png)
+
+### LDL Cholesterol
+
+![](./Leave_one_out/loo_LDL_cholesterol_crossover.png)
+
+### HDL Cholesterol
+
+![](./Leave_one_out/loo_HDL_cholesterol_crossover.png)
+
+### Triglycerides
+
+![](./Leave_one_out/loo_Triglyceride_crossover.png)
+
+
+Crossover - Most Negative - Influence {data-navmenu="Influence"}
+==============================================================================
+
+Row {.tabset}
+-----------------------------------------------------------------------
+
+Leave one out meta-analysis was conducted to assess influential studies.  Each row of the plot displays the 95% CI for the pooled effect size with the given study removed. The green band represents the pooled effect size with all shown studies included. This analysis was conducted by first filtering studies with multiple treatment arms for the arm with the largest negative effect size (URM consumption increases the metric). Weight, BMI, and Body Fat % not included in the filtered influence analysis as there is only one study in each in the filtered effect sizes.
+
+### Total Cholesterol
+
+![](./Leave_one_out/loo_Total_cholesterol_crossover_min.png)
+
+### LDL Cholesterol
+
+![](./Leave_one_out/loo_LDL_cholesterol_crossover_min.png)
+
+### HDL Cholesterol
+
+![](./Leave_one_out/loo_HDL_cholesterol_crossover_min.png)
+
+### Triglycerides
+
+![](./Leave_one_out/loo_Triglyceride_crossover_min.png)
+
+
+Crossover - Most Positive - Influence {data-navmenu="Influence"}
+==============================================================================
+
+Row {.tabset}
+-----------------------------------------------------------------------
+
+Leave one out meta-analysis was conducted to assess influential studies.  Each row of the plot displays the 95% CI for the pooled effect size with the given study removed. The green band represents the pooled effect size with all shown studies included. This analysis was conducted by first filtering studies with multiple treatment arms for the arm with the largest positive effect size (URM consumption decreases the metric). Weight, BMI, and Body Fat % not included in the filtered influence analysis as there is only one study in each in the filtered effect sizes.
+
+### Total Cholesterol
+
+![](./Leave_one_out/loo_Total_cholesterol_crossover_max.png)
+
+### LDL Cholesterol
+
+![](./Leave_one_out/loo_LDL_cholesterol_crossover_max.png)
+
+### HDL Cholesterol
+
+![](./Leave_one_out/loo_HDL_cholesterol_crossover_max.png)
+
+### Triglycerides
+
+![](./Leave_one_out/loo_Triglyceride_crossover_max.png)
+
+Bias Table {data-navmenu="Publication Bias"}
+==============================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### Bias Table
+
+```{r}
+bias_table
+```
+
+
+Unfiltered Funnel Plots {data-navmenu="Publication Bias"}
+==============================================================================
+
+Row {.tabset}
+-----------------------------------------------------------------------
+
+Publication Bias is the bias that the findings of an article change the likelihood of that article being published. Publication bias was examined visually using funnel plots, standardized mean difference (SMD) vs. standard error (SE), and Egger’s test for asymmetry of funnel plots. The line on the interior of the grey shaded area represents the 95% confidence contour. This provides a boundary that we would expect 95% of all studies to be within at a given standard error. Similarly, the line on the exterior of the grey shaded area represents the 99% confidence contour. This provides a boundary that we would expect 99% of all studies to be within at a given standard error. Egger’s test gives a numerical measure of asymmetry in funnel plots and is visually represented by the dashed red line. A vertical line indicates a symmetric scatter plot with no bias. While the dashed red line may visually show strong asymmetry in a funnel plot,  this asymmetry may not be statistically significant.  A summary of the significance values can be found in the Bias Table.
+
+### Weight
+
+```{r}
+funnelunfiltered("Weight Values")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### BMI
+
+```{r}
+funnelunfiltered("BMI Values")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### Percent Body Fat
+
+```{r}
+funnelunfiltered("Percent Body Fat")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### Total Cholesterol
+
+```{r}
+funnelunfiltered("Total-cholesterol")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### LDL Cholesterol
+
+```{r}
+funnelunfiltered("LDL-Cholesterol")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### HDL Cholesterol
+
+```{r}
+funnelunfiltered("HDL-Cholesterol")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### Triglycerides
+
+```{r}
+funnelunfiltered("Triglyceride")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+Minimum Filtered Funnel Plots {data-navmenu="Publication Bias"}
+==============================================================================
+
+Row {.tabset}
+-----------------------------------------------------------------------
+
+Publication Bias is the bias that the findings of an article change the likelihood of that article being published. Publication bias was examined visually using funnel plots, standardized mean difference (SMD) vs. standard error (SE), and Egger’s test for asymmetry of funnel plots. In our survey of publications, we observed that a single study may compare more than two diet treatments. We considered the pairwise comparisons of these diets while considering the high beef diets as the treatment group.  This led us to count a single study multiple times in the first publication bias analysis. We created funnel plots and Egger’s test for bias while only taking the individual diets with largest/smallest ratio $\dfrac{(SMD- mean SMD)}{(SE)}$, thus choosing the most extreme results from a single diet in an individual study.  It is important to note that these choices change the axis of symmetry the resulting funnel plot (mean SMD) and therefore we cannot compare the bias values from Egger’s test directly and instead focus on the p-value for each subset. 
+
+### Weight
+
+```{r}
+funnelmin("Weight Values")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### BMI
+
+```{r}
+funnelmin("BMI Values")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### Percent Body Fat
+
+```{r}
+funnelmin("Percent Body Fat")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### Total Cholesterol
+
+```{r}
+funnelmin("Total-cholesterol")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### LDL Cholesterol
+
+```{r}
+funnelmin("LDL-Cholesterol")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### HDL Cholesterol
+
+```{r}
+funnelmin("HDL-Cholesterol")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### Triglycerides
+
+```{r}
+funnelmin("Triglyceride")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+Maximum Filtered Funnel Plots {data-navmenu="Publication Bias"}
+==============================================================================
+
+Row {.tabset}
+-----------------------------------------------------------------------
+
+Publication Bias is the bias that the findings of an article change the likelihood of that article being published. Publication bias was examined visually using funnel plots, standardized mean difference (SMD) vs. standard error (SE), and Egger’s test for asymmetry of funnel plots. In our survey of publications, we observed that a single study may compare more than two diet treatments. We considered the pairwise comparisons of these diets while considering the high beef diets as the treatment group.  This led us to count a single study multiple times in the first publication bias analysis. We created funnel plots and Egger’s test for bias while only taking the individual diets with largest/smallest ratio $\dfrac{(SMD- mean SMD)}{(SE)}$, thus choosing the most extreme results from a single diet in an individual study.  It is important to note that these choices change the axis of symmetry the resulting funnel plot (mean SMD) and therefore we cannot compare the bias values from Egger’s test directly and instead focus on the p-value for each subset. 
+
+### Weight
+
+```{r}
+funnelmax("Weight Values")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### BMI
+
+```{r}
+funnelmax("BMI Values")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### Percent Body Fat
+
+```{r}
+funnelmax("Percent Body Fat")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### Total Cholesterol
+
+```{r}
+funnelmax("Total-cholesterol")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### LDL Cholesterol
+
+```{r}
+funnelmax("LDL-Cholesterol")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### HDL Cholesterol
+
+```{r}
+funnelmax("HDL-Cholesterol")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+### Triglycerides
+
+```{r}
+funnelmax("Triglyceride")
+```
+>(Meat, 1) and (Other, 1) are the trimmed and filled points necessary to correct for Bias. It is generally assumed that a minimum of 10 studies is required to accurately test publication bias. We created funnel plots for all metrics for completion regardless of the number of studies, however, only metrics with more than 10 studies are referenced in the meta-analysis.
+
+RCT Three-Level Model (Unfiltered) {data-navmenu="Three-Level"}
+==============================================================================
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+These forest plots include all treatment arm effect sizes for the included studies.  A three-level model is utilized to account for the dependence introduced by individual studies contributing more than 1 effect size if multiple treatments were tested.  The three-level structure assumes a random effects model and uses the Restricted Maximum Likelihood (REML) estimator to estimate $\tau^2$, the variance of the true effect sizes. All 95% CI for pooled effect sizes include 0 indicating no evidence of a statistically significant effect of URM consumption. Individual study weights are unavailable for the three-level model.
+
+### Weight
+
+
+![](./Forest_Plots/forest_weight_rct_multi.png)
+
+
+### BMI
+
+![](./Forest_Plots/forest_BMI_rct_multi.png)
+
+### Percent Body Fat
+
+![](./Forest_Plots/forest_percent_body_fat_rct_multi.png)
+
+### Total Cholesterol
+
+![](./Forest_Plots/forest_total_cholesterol_rct_multi.png)
+
+### LDL Cholesterol
+
+![](./Forest_Plots/forest_LDL_cholesterol_rct_multi.png)
+
+### HDL Cholesterol
+
+![](./Forest_Plots/forest_HDL_cholesterol_rct_multi.png)
+
+### Triglycerides
+
+![](./Forest_Plots/forest_Triglycerides_rct_multi.png)
+
+Crossover Trials Three-Level (Unfiltered) {data-navmenu="Three-Level"}
+==============================================================================
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+These forest plots include all treatment arm effect sizes for the included studies.  A three-level model is utilized to account for the dependence introduced by individual studies contributing more than 1 effect size if multiple treatments were tested.  The three-level structure assumes a random effects model and uses the Restricted Maximum Likelihood (REML) estimator to estimate $\tau^2$, the variance of the true effect sizes. All 95% CI for pooled effect sizes include 0 indicating no evidence of a statistically significant effect of URM consumption. Individual study weights are unavailable for the three-level model.
+
+### Weight
+
+![](./Forest_Plots/forest_weight_crossover_multi.png)
+
+### BMI
+
+![](./Forest_Plots/forest_BMI_crossover_multi.png)
+
+### Percent Body Fat
+
+![](./Forest_Plots/forest_percent_body_fat_crossover_multi.png)
+
+### Total Cholesterol
+
+![](./Forest_Plots/forest_total_cholesterol_crossover_multi.png)
+
+### LDL Cholesterol
+
+![](./Forest_Plots/forest_LDL_cholesterol_crossover_multi.png)
+
+
+### HDL Cholesterol
+
+![](./Forest_Plots/forest_HDL_cholesterol_crossover_multi.png)
+
+
+
+### Triglycerides
+
+![](./Forest_Plots/forest_Triglycerides_crossover_multi.png)
+
+All Studies (RCT and Crossover) Three-Level (Unfiltered) {data-navmenu="Three-Level"}
+==============================================================================
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+These forest plots include all treatment arm effect sizes for the included studies.  A three-level model is utilized to account for the dependence introduced by individual studies contributing more than 1 effect size if multiple treatments were tested.  The three-level structure assumes a random effects model and uses the Restricted Maximum Likelihood (REML) estimator to estimate $\tau^2$, the variance of the true effect sizes. All 95% CI for pooled effect sizes include 0 indicating no evidence of a statistically significant effect of URM consumption. Individual study weights are unavailable for the three-level model.
+
+### Weight
+
+
+![](./Forest_Plots/forest_weight_all_multi.png)
+
+
+### BMI
+
+![](./Forest_Plots/forest_BMI_all_multi.png)
+
+### Percent Body Fat
+
+![](./Forest_Plots/forest_percent_body_fat_all_multi.png)
+
+### Total Cholesterol
+
+![](./Forest_Plots/forest_total_cholesterol_all_multi.png)
+
+### LDL Cholesterol
+
+![](./Forest_Plots/forest_LDL_cholesterol_all_multi.png)
+
+### HDL Cholesterol
+
+![](./Forest_Plots/forest_HDL_cholesterol_all_multi.png)
+
+### Triglycerides
+
+![](./Forest_Plots/forest_Triglycerides_all_multi.png)
+
+Data
+==============================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### Data
+
+```{r, out.width="100%", out.height="100%"}
+total_data %>%
+  select(-auth_treat) %>% 
+  datatable(extensions = 'Buttons', options = list(
+    dom = 'Blfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+    lengthMenue = list( c(10, 25, 50, 100, -1), c(10, 25, 50, 100, "All") )
+  )
+)
+```
